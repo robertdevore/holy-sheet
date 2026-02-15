@@ -165,23 +165,32 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
       // Handle navigation keys
       let newRow = selectedCell.row;
       let newCol = selectedCell.col;
+      const is_modifier_pressed = e.metaKey || e.ctrlKey;
 
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
-          newRow = Math.max(0, selectedCell.row - 1);
+          newRow = is_modifier_pressed ? 0 : Math.max(0, selectedCell.row - 1);
           break;
         case 'ArrowDown':
           e.preventDefault();
-          newRow = Math.min(rowCount - 1, selectedCell.row + 1);
+          newRow = is_modifier_pressed ? Math.max(0, rowCount - 1) : Math.min(rowCount - 1, selectedCell.row + 1);
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          newCol = Math.max(0, selectedCell.col - 1);
+          newCol = is_modifier_pressed ? 0 : Math.max(0, selectedCell.col - 1);
           break;
         case 'ArrowRight':
           e.preventDefault();
-          newCol = Math.min(colCount - 1, selectedCell.col + 1);
+          newCol = is_modifier_pressed ? Math.max(0, colCount - 1) : Math.min(colCount - 1, selectedCell.col + 1);
+          break;
+        case 'Home':
+          e.preventDefault();
+          newCol = 0;
+          break;
+        case 'End':
+          e.preventDefault();
+          newCol = Math.max(0, colCount - 1);
           break;
         case 'Enter':
           e.preventDefault();
