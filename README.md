@@ -9,7 +9,8 @@ HolySheet is a minimal, offline, single-user CSV editor that feels like a tiny G
 **Key Features:**
 - ✅ Clean, spreadsheet-like grid interface
 - ✅ Open/Edit/Save CSV files
-- ✅ Copy/paste with clipboard support (TSV format)
+- ✅ Advanced keyboard workflow (select all, cut/copy/paste, fill, go-to-cell)
+- ✅ Copy as TSV or CSV from selected ranges
 - ✅ Undo/redo operations
 - ✅ Insert/delete rows and columns
 - ✅ Virtualized rendering for large files (20k+ rows)
@@ -149,6 +150,7 @@ In packaged macOS builds, this means the file should be placed in the same folde
 
 - **Click** a cell to select it
 - **Double-click** or press **Enter** to edit
+- **F2** edits the active cell
 - **Tab** moves right, **Shift+Tab** moves left
 - **Enter** commits the edit
 - **Esc** cancels editing
@@ -157,17 +159,26 @@ In packaged macOS builds, this means the file should be placed in the same folde
 ### Selection
 
 - **Click and drag** to select multiple cells
-- **Shift+Arrow keys** extend selection
+- **Cmd/Ctrl+A** selects the full grid
+- **Cmd/Ctrl+Shift+A** or **Esc** clears multi-cell selection back to active cell
 - **Click a row header** to select the full row
 - **Click a column header** to select the full column
 - Selected cells show blue highlight
 
 ### Copy & Paste
 
-- **Copy:** Cmd/Ctrl+C (copies as TSV - tab-separated values)
+- **Copy:** Cmd/Ctrl+C (TSV - tab-separated values)
+- **Copy as CSV:** Cmd/Ctrl+Shift+C (comma-separated output)
+- **Cut:** Cmd/Ctrl+X (copies selection, then clears selected cells)
 - **Paste:** Cmd/Ctrl+V (accepts TSV/CSV text)
+- **Paste Values:** Cmd/Ctrl+Shift+V (same as paste in this version)
 - Multi-cell paste automatically expands grid if needed
 - Paste fills from active cell across/down
+
+### Fill Commands
+
+- **Fill Down:** Cmd/Ctrl+D (fills selection with the first selected row)
+- **Fill Right:** Cmd/Ctrl+R (fills selection with the left-most selected column)
 
 ### Row & Column Operations
 
@@ -179,6 +190,10 @@ In packaged macOS builds, this means the file should be placed in the same folde
 
 **Column resizing:**
 - Drag the divider at the right edge of any column header
+
+**Keyboard (when full row/column is selected):**
+- **Insert:** Cmd/Ctrl++
+- **Delete:** Cmd/Ctrl+-
 
 ### Undo & Redo
 
@@ -199,6 +214,12 @@ In packaged macOS builds, this means the file should be placed in the same folde
 - **Menu:** File → New (Cmd/Ctrl+N)
 - Creates empty 20x10 grid
 - Prompts to save if current file has unsaved changes
+
+### Navigation
+
+- **Go to Cell:** Cmd/Ctrl+G (A1 format, e.g. `B12`)
+- **Home/End:** jump to first/last column in current row
+- **Cmd/Ctrl+Arrow:** jump to grid boundaries
 
 ### Panic Close
 
@@ -222,15 +243,29 @@ Use this feature if you need to close HolySheet instantly (e.g., someone enters 
 | Save As | Cmd+Shift+S | Ctrl+Shift+S |
 | Undo | Cmd+Z | Ctrl+Z |
 | Redo | Cmd+Shift+Z | Ctrl+Shift+Z (or Ctrl+Y) |
+| Select All | Cmd+A | Ctrl+A |
+| Clear Multi-Selection | Cmd+Shift+A | Ctrl+Shift+A |
 | Copy | Cmd+C | Ctrl+C |
+| Copy as CSV | Cmd+Shift+C | Ctrl+Shift+C |
+| Cut | Cmd+X | Ctrl+X |
 | Paste | Cmd+V | Ctrl+V |
+| Paste Values | Cmd+Shift+V | Ctrl+Shift+V |
+| Fill Down | Cmd+D | Ctrl+D |
+| Fill Right | Cmd+R | Ctrl+R |
+| Insert Row/Column* | Cmd++ | Ctrl++ |
+| Delete Row/Column* | Cmd+- | Ctrl+- |
+| Go to Cell | Cmd+G | Ctrl+G |
 | Panic Close | Cmd+Shift+Q | Ctrl+Shift+Q |
 | Navigate | Arrow Keys | Arrow Keys |
+| Jump to Boundary | Cmd/Ctrl + Arrow Keys | Ctrl + Arrow Keys |
+| Row Start/End | Home / End | Home / End |
 | Edit Cell | Enter or F2 | Enter or F2 |
 | Cancel Edit | Esc | Esc |
 | Move Right | Tab | Tab |
 | Move Left | Shift+Tab | Shift+Tab |
 | Clear Cell(s) | Delete/Backspace | Delete/Backspace |
+
+\* Insert/Delete shortcut applies when a full row or full column selection is active.
 
 ## CSV Parsing Rules
 
