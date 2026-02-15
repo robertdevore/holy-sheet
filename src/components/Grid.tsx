@@ -50,6 +50,7 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
   const [gridSize, setGridSize] = useState({ width: 1000, height: 600 });
   const [columnWidths, setColumnWidths] = useState<number[]>([]);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
   const [resizingColumn, setResizingColumn] = useState<number | null>(null);
   const prevEditingCell = useRef<CellCoord | null>(null);
   const pending_initial_edit_value = useRef<string | null>(null);
@@ -296,8 +297,9 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
     };
   }, [resizingColumn]);
 
-  const handleGridScroll = useCallback(({ scrollLeft }: { scrollLeft: number }) => {
+  const handleGridScroll = useCallback(({ scrollLeft, scrollTop }: { scrollLeft: number; scrollTop: number }) => {
     setScrollLeft(scrollLeft);
+    setScrollTop(scrollTop);
   }, []);
 
   const Cell = ({ columnIndex, rowIndex, style }: any) => {
@@ -406,20 +408,25 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
 
       {/* Row headers */}
       <div className="row-headers">
-        {Array.from({ length: rowCount }).map((_, i) => (
-          <div
-            key={i}
-            className={`row-header ${isFullRowSelection && selectionBounds && i >= selectionBounds.minRow && i <= selectionBounds.maxRow ? 'selected-header' : ''}`}
-            style={{ height: CELL_HEIGHT }}
-            onClick={() => onRowHeaderClick(i)}
-            onContextMenu={(e: React.MouseEvent) => {
-              e.preventDefault();
-              onRowHeaderContextMenu(i, e);
-            }}
-          >
-            {i + 1}
-          </div>
-        ))}
+        <div
+          className="row-headers-inner"
+          style={{ transform: `translateY(-${scrollTop}px)` }}
+        >
+          {Array.from({ length: rowCount }).map((_, i) => (
+            <div
+              key={i}
+              className={`row-header ${isFullRowSelection && selectionBounds && i >= selectionBounds.minRow && i <= selectionBounds.maxRow ? 'selected-header' : ''}`}
+              style={{ height: CELL_HEIGHT }}
+              onClick={() => onRowHeaderClick(i)}
+              onContextMenu={(e: React.MouseEvent) => {
+                e.preventDefault();
+                onRowHeaderContextMenu(i, e);
+              }}
+            >
+              {i + 1}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Virtual grid */}

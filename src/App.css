@@ -243,6 +243,11 @@ body {
   background: var(--bg-subtle);
   border-right: 1px solid var(--border-subtle);
   z-index: 10;
+  overflow: hidden;
+}
+
+.row-headers-inner {
+  will-change: transform;
 }
 
 .row-header {
