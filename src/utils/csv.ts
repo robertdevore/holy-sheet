@@ -125,9 +125,28 @@ export function parseCsv(content: string, delimiter?: string): CsvData {
  * Serialize a 2D array into CSV format
  */
 export function serializeCsv(data: string[][], delimiter: string = ','): string {
+  let lastRowWithData = -1;
+  let lastColWithData = -1;
+
+  for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+    const row = data[rowIndex] || [];
+    for (let colIndex = 0; colIndex < row.length; colIndex++) {
+      const cell = row[colIndex] || '';
+      if (cell !== '') {
+        lastRowWithData = Math.max(lastRowWithData, rowIndex);
+        lastColWithData = Math.max(lastColWithData, colIndex);
+      }
+    }
+  }
+
+  if (lastRowWithData < 0 || lastColWithData < 0) {
+    return '';
+  }
+
   const lines: string[] = [];
 
-  for (const row of data) {
+  for (let rowIndex = 0; rowIndex <= lastRowWithData; rowIndex++) {
+    const row = data[rowIndex] || [];
     const cells = row.map((cell) => {
       // Check if cell needs quoting
       const needsQuoting =
@@ -145,7 +164,13 @@ export function serializeCsv(data: string[][], delimiter: string = ','): string 
       return cell;
     });
 
-    lines.push(cells.join(delimiter));
+    while (cells.length < lastColWithData + 1) {
+      cells.push('');
+    }
+
+    const trimmedCells = cells.slice(0, lastColWithData + 1);
+
+    lines.push(trimmedCells.join(delimiter));
   }
 
   return lines.join('\n');
