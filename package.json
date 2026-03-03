@@ -47,7 +47,10 @@
       "dist-electron/**/*"
     ],
     "mac": {
-      "target": "dir",
+      "target": [
+        "dir",
+        "dmg"
+      ],
       "category": "public.app-category.productivity",
       "icon": "build/icon.icns"
     },

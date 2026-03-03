@@ -9,6 +9,7 @@ HolySheet is a minimal, offline, single-user CSV editor that feels like a tiny G
 **Key Features:**
 - ✅ Clean, spreadsheet-like grid interface
 - ✅ Open/Edit/Save CSV files
+- ✅ Multiple tabs per file (Google Sheets-style tab strip)
 - ✅ Advanced keyboard workflow (select all, cut/copy/paste, fill, go-to-cell)
 - ✅ Copy as TSV or CSV from selected ranges
 - ✅ Undo/redo operations
@@ -20,7 +21,7 @@ HolySheet is a minimal, offline, single-user CSV editor that feels like a tiny G
 
 **What HolySheet is NOT:**
 - ❌ No formulas, functions, or calculations
-- ❌ No charts, pivot tables, or multi-sheet workbooks
+- ❌ No charts, pivot tables
 - ❌ No cloud sync or collaboration features
 - ❌ No auto-updater or crash reporting
 - ❌ No background services
@@ -107,11 +108,16 @@ When unmounted, HolySheet leaves no recoverable traces outside the encrypted fol
 
    (You can also use `npm run package`; both produce distributable output in `release/`.)
 
-2. **Locate the built app** in `release/` folder
+2. **Locate the built app** in `release/mac/` (or use the DMG in `release/`)
 
 3. **Move the entire app** into your encrypted folder:
    ```bash
-   cp -r release/HolySheet.app /path/to/encrypted/folder/
+   cp -r release/mac/HolySheet.app /path/to/encrypted/folder/
+   ```
+
+   Or, install from DMG:
+   ```bash
+   open release/HolySheet-<version>.dmg
    ```
 
 4. **Create sentinel file** in the same directory as the app:
@@ -207,7 +213,15 @@ In packaged macOS builds, this means the file should be placed in the same folde
 - **Save:** Cmd/Ctrl+S (overwrites current file)
 - **Save As:** Cmd/Ctrl+Shift+S (prompts for new location)
 - Saves as UTF-8 encoded CSV
+- If one tab exists, saves as regular CSV
+- If multiple tabs exist, saves as HolySheet multi-tab CSV format in one file
 - Properly quotes fields containing commas, quotes, or newlines
+
+### Tabs
+
+- Click **+** near the bottom tab strip to add a new tab
+- Click any tab name to switch sheets within the same file
+- Multi-tab files reopen with all tabs preserved
 
 ### New File
 
