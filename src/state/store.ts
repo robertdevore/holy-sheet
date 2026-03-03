@@ -11,7 +11,31 @@ import {
   createDeleteColumnCommand,
 } from './undo';
 
+interface SheetTab {
+  id: string;
+  name: string;
+  data: string[][];
+}
+
+function createSheetId(): string {
+  return `sheet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createSheetTab(name: string = 'Sheet1', data?: string[][]): SheetTab {
+  return {
+    id: createSheetId(),
+    name,
+    data: data || createEmptyGrid(),
+  };
+}
+
+function getActiveTab(tabs: SheetTab[], activeTabId: string): SheetTab {
+  return tabs.find((tab) => tab.id === activeTabId) || tabs[0];
+}
+
 export interface AppState {
+  tabs: SheetTab[];
+  activeTabId: string;
   data: string[][];
   selectedCell: CellCoord | null;
   selectedRange: CellRange | null;
@@ -24,8 +48,12 @@ export interface AppState {
 const undoStack = new UndoStack();
 
 export function useAppState() {
+  const initialTab = createSheetTab('Sheet1');
+
   const [state, setState] = useState<AppState>({
-    data: createEmptyGrid(),
+    tabs: [initialTab],
+    activeTabId: initialTab.id,
+    data: initialTab.data,
     selectedCell: null,
     selectedRange: null,
     editingCell: null,
@@ -37,17 +65,49 @@ export function useAppState() {
   const updateData = useCallback((newData: string[][]) => {
     setState((prev: AppState) => ({
       ...prev,
+      tabs: prev.tabs.map((tab) => (
+        tab.id === prev.activeTabId ? { ...tab, data: newData } : tab
+      )),
       data: newData,
       isDirty: true,
     }));
   }, []);
 
   const setData = useCallback((newData: string[][], filePath?: string, fileName?: string) => {
+    undoStack.clear();
+    const firstTab = createSheetTab('Sheet1', newData);
     setState((prev: AppState) => ({
       ...prev,
-      data: newData,
+      tabs: [firstTab],
+      activeTabId: firstTab.id,
+      data: firstTab.data,
       filePath: filePath || prev.filePath,
       fileName: fileName || prev.fileName,
+      selectedCell: null,
+      selectedRange: null,
+      editingCell: null,
+      isDirty: false,
+    }));
+  }, []);
+
+  const setWorkbook = useCallback((newTabs: Array<{ name: string; data: string[][] }>, filePath?: string, fileName?: string) => {
+    undoStack.clear();
+
+    const tabs = (newTabs.length ? newTabs : [{ name: 'Sheet1', data: createEmptyGrid() }]).map((tab, index) =>
+      createSheetTab(tab.name || `Sheet${index + 1}`, tab.data)
+    );
+    const activeTab = tabs[0];
+
+    setState((prev: AppState) => ({
+      ...prev,
+      tabs,
+      activeTabId: activeTab.id,
+      data: activeTab.data,
+      filePath: filePath || prev.filePath,
+      fileName: fileName || prev.fileName,
+      selectedCell: null,
+      selectedRange: null,
+      editingCell: null,
       isDirty: false,
     }));
   }, []);
@@ -156,8 +216,12 @@ export function useAppState() {
 
   const newFile = useCallback(() => {
     undoStack.clear();
+    const freshTab = createSheetTab('Sheet1');
+
     setState({
-      data: createEmptyGrid(),
+      tabs: [freshTab],
+      activeTabId: freshTab.id,
+      data: freshTab.data,
       selectedCell: null,
       selectedRange: null,
       editingCell: null,
@@ -176,9 +240,96 @@ export function useAppState() {
     }));
   }, []);
 
+  const addTab = useCallback(() => {
+    undoStack.clear();
+
+    setState((prev: AppState) => {
+      const newTabName = `Sheet${prev.tabs.length + 1}`;
+      const newTab = createSheetTab(newTabName);
+
+      return {
+        ...prev,
+        tabs: [...prev.tabs, newTab],
+        activeTabId: newTab.id,
+        data: newTab.data,
+        selectedCell: null,
+        selectedRange: null,
+        editingCell: null,
+        isDirty: true,
+      };
+    });
+  }, []);
+
+  const switchTab = useCallback((tabId: string) => {
+    undoStack.clear();
+
+    setState((prev: AppState) => {
+      if (tabId === prev.activeTabId) return prev;
+
+      const activeTab = getActiveTab(prev.tabs, tabId);
+      if (!activeTab) return prev;
+
+      return {
+        ...prev,
+        activeTabId: activeTab.id,
+        data: activeTab.data,
+        selectedCell: null,
+        selectedRange: null,
+        editingCell: null,
+      };
+    });
+  }, []);
+
+  const renameTab = useCallback((tabId: string, tabName: string) => {
+    const trimmedName = tabName.trim();
+    const nextName = trimmedName || 'Sheet';
+
+    setState((prev: AppState) => {
+      const existingTab = prev.tabs.find((tab) => tab.id === tabId);
+      if (!existingTab || existingTab.name === nextName) return prev;
+
+      return {
+        ...prev,
+        tabs: prev.tabs.map((tab) => (
+          tab.id === tabId ? { ...tab, name: nextName } : tab
+        )),
+        isDirty: true,
+      };
+    });
+  }, []);
+
+  const deleteTab = useCallback((tabId: string) => {
+    undoStack.clear();
+
+    setState((prev: AppState) => {
+      if (prev.tabs.length <= 1) return prev;
+
+      const tabIndex = prev.tabs.findIndex((tab) => tab.id === tabId);
+      if (-1 === tabIndex) return prev;
+
+      const nextTabs = prev.tabs.filter((tab) => tab.id !== tabId);
+      const shouldSwitchActive = prev.activeTabId === tabId;
+      const nextActiveTab = shouldSwitchActive
+        ? nextTabs[Math.max(0, tabIndex - 1)] || nextTabs[0]
+        : getActiveTab(nextTabs, prev.activeTabId);
+
+      return {
+        ...prev,
+        tabs: nextTabs,
+        activeTabId: nextActiveTab.id,
+        data: nextActiveTab.data,
+        selectedCell: shouldSwitchActive ? null : prev.selectedCell,
+        selectedRange: shouldSwitchActive ? null : prev.selectedRange,
+        editingCell: shouldSwitchActive ? null : prev.editingCell,
+        isDirty: true,
+      };
+    });
+  }, []);
+
   return {
     state,
     setData,
+    setWorkbook,
     setCellValue,
     pasteData,
     insertRow,
@@ -194,5 +345,9 @@ export function useAppState() {
     setEditingCell,
     newFile,
     markSaved,
+    addTab,
+    switchTab,
+    renameTab,
+    deleteTab,
   };
 }

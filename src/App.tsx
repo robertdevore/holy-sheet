@@ -3,7 +3,7 @@ import { Grid } from './components/Grid';
 import { Toolbar } from './components/Toolbar';
 import { StatusBar } from './components/StatusBar';
 import { useAppState } from './state/store';
-import { parseCsv, serializeCsv } from './utils/csv';
+import { parseWorkbook, serializeWorkbook, serializeCsv } from './utils/csv';
 import { CellRange, getRangeBounds, a1ToCoord } from './utils/selection';
 import './App.css';
 
@@ -12,7 +12,7 @@ function App() {
 
   const {
     state,
-    setData,
+    setWorkbook,
     setCellValue,
     pasteData,
     insertRow,
@@ -28,6 +28,10 @@ function App() {
     setEditingCell,
     newFile,
     markSaved,
+    addTab,
+    switchTab,
+    renameTab,
+    deleteTab,
   } = useAppState();
 
   const [portableInfo, setPortableInfo] = useState<{
@@ -36,6 +40,8 @@ function App() {
     isDev: boolean;
   } | null>(null);
   const [appVersion, setAppVersion] = useState('1.0.0');
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const [editingTabName, setEditingTabName] = useState('');
 
   const [contextMenu, setContextMenu] = useState<{
     type: 'row' | 'col';
@@ -91,17 +97,21 @@ function App() {
 
     const result = await window.electronAPI.openCsv();
     if (result) {
-      const parsed = parseCsv(result.content);
-      setData(parsed.data, result.path, result.name);
+      const parsed = parseWorkbook(result.content);
+      const workbookTabs = parsed.tabs.map((tab) => ({
+        name: tab.name,
+        data: tab.data,
+      }));
+      setWorkbook(workbookTabs, result.path, result.name);
     }
-  }, [checkUnsavedChanges, setData]);
+  }, [checkUnsavedChanges, setWorkbook]);
 
   const handleSave = useCallback(async () => {
     if (!state.filePath) {
       return handleSaveAs();
     }
 
-    const csvContent = serializeCsv(state.data);
+    const csvContent = serializeWorkbook(state.tabs);
     const result = await window.electronAPI.saveCsv(state.filePath, csvContent);
 
     if (result.success) {
@@ -109,20 +119,36 @@ function App() {
     } else {
       alert(`Failed to save: ${result.error}`);
     }
-  }, [state.filePath, state.data, markSaved]);
+  }, [state.filePath, state.tabs, markSaved]);
 
   const handleSaveAs = useCallback(async () => {
-    const csvContent = serializeCsv(state.data);
+    const csvContent = serializeWorkbook(state.tabs);
     const result = await window.electronAPI.saveCsvAs(csvContent);
 
     if (result && result.success) {
       markSaved(result.path, result.name);
     }
-  }, [state.data, markSaved]);
+  }, [state.tabs, markSaved]);
 
   const handlePanicClose = useCallback(() => {
     window.electronAPI.panicClose();
   }, []);
+
+  const startTabRename = useCallback((tabId: string, tabName: string) => {
+    setEditingTabId(tabId);
+    setEditingTabName(tabName);
+  }, []);
+
+  const cancelTabRename = useCallback(() => {
+    setEditingTabId(null);
+    setEditingTabName('');
+  }, []);
+
+  const commitTabRename = useCallback((tabId: string) => {
+    renameTab(tabId, editingTabName);
+    setEditingTabId(null);
+    setEditingTabName('');
+  }, [renameTab, editingTabName]);
 
   const handleCellClick = useCallback(
     (row: number, col: number) => {
@@ -608,6 +634,66 @@ function App() {
           onRowHeaderContextMenu={handleRowHeaderContextMenu}
           onColHeaderContextMenu={handleColHeaderContextMenu}
         />
+      </div>
+
+      <div className="tab-strip" role="tablist" aria-label="Workbook tabs">
+        {state.tabs.map((tab) => {
+          const isActive = tab.id === state.activeTabId;
+          const isEditing = tab.id === editingTabId;
+
+          return (
+            <div key={tab.id} className={`tab-item ${isActive ? 'active' : ''}`}>
+              {isEditing ? (
+                <input
+                  className="tab-name-input"
+                  value={editingTabName}
+                  onChange={(e) => setEditingTabName(e.target.value)}
+                  onBlur={() => commitTabRename(tab.id)}
+                  onKeyDown={(e) => {
+                    if ('Enter' === e.key) {
+                      e.preventDefault();
+                      commitTabRename(tab.id);
+                    }
+
+                    if ('Escape' === e.key) {
+                      e.preventDefault();
+                      cancelTabRename();
+                    }
+                  }}
+                  autoFocus
+                />
+              ) : (
+                <button
+                  className="tab-button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => switchTab(tab.id)}
+                  onDoubleClick={() => startTabRename(tab.id, tab.name)}
+                  title={`${tab.name} (double-click to rename)`}
+                >
+                  {tab.name}
+                </button>
+              )}
+
+              <button
+                className="tab-close-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteTab(tab.id);
+                }}
+                title="Delete tab"
+                aria-label={`Delete ${tab.name} tab`}
+                disabled={state.tabs.length <= 1}
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
+
+        <button className="tab-add-button" onClick={addTab} title="Add tab" aria-label="Add tab">
+          +
+        </button>
       </div>
 
       <StatusBar

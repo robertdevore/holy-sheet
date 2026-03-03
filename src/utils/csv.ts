@@ -8,6 +8,19 @@ export interface CsvData {
   colCount: number;
 }
 
+export interface WorkbookTab {
+  id: string;
+  name: string;
+  data: string[][];
+}
+
+export interface WorkbookData {
+  tabs: WorkbookTab[];
+}
+
+const WORKBOOK_HEADER = '#HOLYSHEET_TABS_V1';
+const WORKBOOK_TAB_PREFIX = '#TAB:';
+
 /**
  * Detect the delimiter used in a CSV string
  */
@@ -122,6 +135,78 @@ export function parseCsv(content: string, delimiter?: string): CsvData {
 }
 
 /**
+ * Parse HolySheet workbook format or fallback to a single CSV tab.
+ */
+export function parseWorkbook(content: string): WorkbookData {
+  const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  if (!normalizedContent.startsWith(WORKBOOK_HEADER + '\n') && normalizedContent !== WORKBOOK_HEADER) {
+    return {
+      tabs: [
+        {
+          id: 'sheet-1',
+          name: 'Sheet1',
+          data: parseCsv(content).data,
+        },
+      ],
+    };
+  }
+
+  const lines = normalizedContent.split('\n');
+  const tabs: WorkbookTab[] = [];
+  let currentTabName: string | null = null;
+  let currentTabLines: string[] = [];
+
+  const flushCurrentTab = () => {
+    if (null === currentTabName) return;
+
+    const tabContent = currentTabLines.join('\n');
+    const parsed = parseCsv(tabContent);
+    tabs.push({
+      id: `sheet-${tabs.length + 1}`,
+      name: currentTabName,
+      data: parsed.data,
+    });
+    currentTabLines = [];
+  };
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i] || '';
+
+    if (line.startsWith(WORKBOOK_TAB_PREFIX)) {
+      flushCurrentTab();
+      const encodedName = line.substring(WORKBOOK_TAB_PREFIX.length);
+      try {
+        currentTabName = decodeURIComponent(encodedName) || `Sheet${tabs.length + 1}`;
+      } catch (_error) {
+        currentTabName = encodedName || `Sheet${tabs.length + 1}`;
+      }
+      continue;
+    }
+
+    if (null !== currentTabName) {
+      currentTabLines.push(line);
+    }
+  }
+
+  flushCurrentTab();
+
+  if (!tabs.length) {
+    return {
+      tabs: [
+        {
+          id: 'sheet-1',
+          name: 'Sheet1',
+          data: createEmptyGrid(),
+        },
+      ],
+    };
+  }
+
+  return { tabs };
+}
+
+/**
  * Serialize a 2D array into CSV format
  */
 export function serializeCsv(data: string[][], delimiter: string = ','): string {
@@ -171,6 +256,27 @@ export function serializeCsv(data: string[][], delimiter: string = ','): string 
     const trimmedCells = cells.slice(0, lastColWithData + 1);
 
     lines.push(trimmedCells.join(delimiter));
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Serialize workbook tabs into HolySheet multi-tab CSV format.
+ */
+export function serializeWorkbook(tabs: WorkbookTab[]): string {
+  const safeTabs = tabs.length ? tabs : [{ id: 'sheet-1', name: 'Sheet1', data: createEmptyGrid() }];
+
+  if (1 === safeTabs.length) {
+    return serializeCsv(safeTabs[0].data);
+  }
+
+  const lines: string[] = [WORKBOOK_HEADER];
+
+  for (const tab of safeTabs) {
+    const encodedName = encodeURIComponent(tab.name || 'Sheet');
+    lines.push(`${WORKBOOK_TAB_PREFIX}${encodedName}`);
+    lines.push(serializeCsv(tab.data));
   }
 
   return lines.join('\n');

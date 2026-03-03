@@ -162,6 +162,96 @@ body {
   position: relative;
 }
 
+.tab-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  height: 28px;
+}
+
+.tab-button,
+.tab-add-button,
+.tab-close-button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab-button {
+  padding: 0 12px;
+  height: 100%;
+}
+
+.tab-item:hover,
+.tab-add-button:hover {
+  background: var(--bg-subtle-hover);
+  border-color: var(--border-strong);
+}
+
+.tab-item.active {
+  background: var(--bg-selected-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent);
+}
+
+.tab-close-button {
+  width: 24px;
+  height: 100%;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.tab-close-button:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.tab-close-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tab-name-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 0 10px;
+  width: 140px;
+  height: 100%;
+}
+
+.tab-add-button {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  height: 28px;
+  min-width: 32px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
 /* Grid Container */
 .grid-container {
   position: relative;
