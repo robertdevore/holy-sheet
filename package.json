@@ -29,14 +29,14 @@
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^8.2.2",
     "electron": "^35.7.5",
-    "electron-builder": "^24.9.1",
+    "electron-builder": "^26.8.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.8",
     "wait-on": "^7.2.0"
   },
   "overrides": {
     "esbuild": "0.25.0",
-    "tar": "7.5.7"
+    "tar": "7.5.8"
   },
   "build": {
     "appId": "com.holysheet.app",
