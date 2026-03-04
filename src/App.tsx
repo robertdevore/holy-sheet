@@ -44,7 +44,7 @@ function App() {
     portablePath: string;
     isDev: boolean;
   } | null>(null);
-  const [appVersion, setAppVersion] = useState('1.0.0');
+  const [appVersion, setAppVersion] = useState('0.2.0');
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingTabName, setEditingTabName] = useState('');
   const [textColorPicker, setTextColorPicker] = useState('#1f2937');
