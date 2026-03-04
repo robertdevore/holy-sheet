@@ -8,11 +8,13 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.electron.json && vite build && electron-builder",
+    "build": "tsc -p tsconfig.electron.json && vite build && electron-builder && npm run sync:app",
     "preview": "vite preview",
     "electron:dev": "tsc -p tsconfig.electron.json && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "tsc -p tsconfig.electron.json && vite build",
-    "package": "npm run electron:build && electron-builder"
+    "package": "npm run electron:build && electron-builder && npm run sync:app",
+    "sync:app": "rm -rf release/HolySheet.app && cp -R release/mac/HolySheet.app release/HolySheet.app",
+    "open:release": "open release/HolySheet.app"
   },
   "dependencies": {
     "react": "^18.2.0",

@@ -107,8 +107,15 @@ When unmounted, HolySheet leaves no recoverable traces outside the encrypted fol
    ```
 
    (You can also use `npm run package`; both produce distributable output in `release/`.)
+   
+   `npm run build` now auto-syncs `release/HolySheet.app` from `release/mac/HolySheet.app`, so the top-level app bundle is always the latest build.
 
-2. **Locate the built app** in `release/mac/` (or use the DMG in `release/`)
+   To launch the synced app directly:
+   ```bash
+   npm run open:release
+   ```
+
+2. **Locate the built app** in `release/mac/` (or use the synced top-level app `release/HolySheet.app`, or the DMG in `release/`)
 
 3. **Move the entire app** into your encrypted folder:
    ```bash
@@ -151,6 +158,7 @@ In packaged macOS builds, this means the file should be placed in the same folde
 - **Toolbar:** Click "Open" button
 - Supports comma, semicolon, and tab-delimited files
 - Auto-detects delimiter (or defaults to comma)
+- Cells containing URLs (http/https or www) are clickable and open in your default browser
 
 ### Editing Cells
 
@@ -158,7 +166,8 @@ In packaged macOS builds, this means the file should be placed in the same folde
 - **Double-click** or press **Enter** to edit
 - **F2** edits the active cell
 - **Tab** moves right, **Shift+Tab** moves left
-- **Enter** commits the edit
+- **Enter** commits the edit and moves to the cell below (continues editing)
+- If Enter is pressed on the last row, HolySheet adds a new row automatically
 - **Esc** cancels editing
 - **Arrow keys** navigate the grid
 
@@ -186,6 +195,20 @@ In packaged macOS builds, this means the file should be placed in the same folde
 - **Fill Down:** Cmd/Ctrl+D (fills selection with the first selected row)
 - **Fill Right:** Cmd/Ctrl+R (fills selection with the left-most selected column)
 
+### Text Formatting
+
+- Select a cell range (or full row/column via headers), then use toolbar controls:
+   - **B / I / U** buttons for bold, italic, underline
+   - **T** color picker for text color
+   - **Bg** color picker for background color
+   - **Tx / Bx** buttons to clear text/background colors
+- Keyboard shortcuts also work for styles:
+   - **Bold:** Cmd/Ctrl+B
+   - **Italic:** Cmd/Ctrl+I
+   - **Underline:** Cmd/Ctrl+U
+- Press the same style shortcut again to toggle it off for the selected range
+- Toggle formatting bar visibility: **Cmd/Ctrl+Shift+F**
+
 ### Row & Column Operations
 
 **Right-click** on row/column headers for context menu:
@@ -194,8 +217,13 @@ In packaged macOS builds, this means the file should be placed in the same folde
 - Insert Column Left/Right
 - Delete Column
 
+**Reorder rows/columns:**
+- Click and drag a **row number** to move that row to a new position
+- Click and drag a **column letter** to move that column to a new position
+
 **Column resizing:**
 - Drag the divider at the right edge of any column header
+- Custom column widths are saved with the file and restored when reopening in HolySheet
 
 **Keyboard (when full row/column is selected):**
 - **Insert:** Cmd/Ctrl++
@@ -215,6 +243,7 @@ In packaged macOS builds, this means the file should be placed in the same folde
 - Saves as UTF-8 encoded CSV
 - If one tab exists, saves as regular CSV
 - If multiple tabs exist, saves as HolySheet multi-tab CSV format in one file
+- If formatting/colors are used, HolySheet saves in HolySheet format so styles persist on reopen
 - Properly quotes fields containing commas, quotes, or newlines
 
 ### Tabs
@@ -266,6 +295,12 @@ Use this feature if you need to close HolySheet instantly (e.g., someone enters 
 | Paste Values | Cmd+Shift+V | Ctrl+Shift+V |
 | Fill Down | Cmd+D | Ctrl+D |
 | Fill Right | Cmd+R | Ctrl+R |
+| Bold selection | Cmd+B | Ctrl+B |
+| Italic selection | Cmd+I | Ctrl+I |
+| Underline selection | Cmd+U | Ctrl+U |
+| Toggle formatting bar | Cmd+Shift+F | Ctrl+Shift+F |
+| Apply current background color | Cmd+Shift+H | Ctrl+Shift+H |
+| Apply current text color | Cmd+Shift+T | Ctrl+Shift+T |
 | Insert Row/Column* | Cmd++ | Ctrl++ |
 | Delete Row/Column* | Cmd+- | Ctrl+- |
 | Go to Cell | Cmd+G | Ctrl+G |
