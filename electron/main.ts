@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, ipcMain, dialog, Event, IpcMainInvokeEvent, MenuItemConstructorOptions, WebContents } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, dialog, Event, IpcMainInvokeEvent, MenuItemConstructorOptions, WebContents, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -298,6 +298,27 @@ function setupIpcHandlers() {
   // Get app version
   ipcMain.handle('get-app-version', () => {
     return app.getVersion();
+  });
+
+  // Open external URL in default browser
+  ipcMain.handle('open-external-url', async (_event: IpcMainInvokeEvent, rawUrl: string) => {
+    const input = String(rawUrl || '').trim();
+    if (!input) return { success: false, error: 'Empty URL' };
+
+    const url = /^https?:\/\//i.test(input)
+      ? input
+      : (/^www\./i.test(input) ? `https://${input}` : '');
+
+    if (!url || !/^https?:\/\//i.test(url)) {
+      return { success: false, error: 'Invalid URL' };
+    }
+
+    try {
+      await shell.openExternal(url);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
   });
 }
 

@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   panicClose: () => ipcRenderer.invoke('panic-close'),
   getPortableInfo: () => ipcRenderer.invoke('get-portable-info'),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  openExternalUrl: (url: string) => ipcRenderer.invoke('open-external-url', url),
 
   // Menu listeners
   onMenuNew: (callback: () => void) => {
@@ -65,6 +66,7 @@ export interface ElectronAPI {
     isDev: boolean;
   }>;
   getAppVersion: () => Promise<string>;
+  openExternalUrl: (url: string) => Promise<{ success: boolean; error?: string }>;
   onMenuNew: (callback: () => void) => () => void;
   onMenuOpen: (callback: () => void) => () => void;
   onMenuSave: (callback: () => void) => () => void;

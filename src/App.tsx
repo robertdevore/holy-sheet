@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Grid } from './components/Grid';
 import { Toolbar } from './components/Toolbar';
 import { StatusBar } from './components/StatusBar';
@@ -19,6 +19,8 @@ function App() {
     deleteRow,
     insertColumn,
     deleteColumn,
+    moveRow,
+    moveColumn,
     undo,
     redo,
     canUndo,
@@ -32,6 +34,9 @@ function App() {
     switchTab,
     renameTab,
     deleteTab,
+    toggleFormat,
+    setFormatColor,
+    setColumnWidths,
   } = useAppState();
 
   const [portableInfo, setPortableInfo] = useState<{
@@ -42,6 +47,9 @@ function App() {
   const [appVersion, setAppVersion] = useState('1.0.0');
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingTabName, setEditingTabName] = useState('');
+  const [textColorPicker, setTextColorPicker] = useState('#1f2937');
+  const [backgroundColorPicker, setBackgroundColorPicker] = useState('#fef3c7');
+  const [showFormattingBar, setShowFormattingBar] = useState(true);
 
   const [contextMenu, setContextMenu] = useState<{
     type: 'row' | 'col';
@@ -50,16 +58,21 @@ function App() {
     y: number;
   } | null>(null);
 
+  const handleNewRef = useRef<() => Promise<void> | void>(async () => {});
+  const handleOpenRef = useRef<() => Promise<void> | void>(async () => {});
+  const handleSaveRef = useRef<() => Promise<void> | void>(async () => {});
+  const handleSaveAsRef = useRef<() => Promise<void> | void>(async () => {});
+
   useEffect(() => {
     // Get portable mode info
     window.electronAPI.getPortableInfo().then(setPortableInfo);
     window.electronAPI.getAppVersion().then(setAppVersion).catch(() => {});
 
     // Setup menu listeners
-    const cleanupNew = window.electronAPI.onMenuNew(() => handleNew());
-    const cleanupOpen = window.electronAPI.onMenuOpen(() => handleOpen());
-    const cleanupSave = window.electronAPI.onMenuSave(() => handleSave());
-    const cleanupSaveAs = window.electronAPI.onMenuSaveAs(() => handleSaveAs());
+    const cleanupNew = window.electronAPI.onMenuNew(() => { void handleNewRef.current(); });
+    const cleanupOpen = window.electronAPI.onMenuOpen(() => { void handleOpenRef.current(); });
+    const cleanupSave = window.electronAPI.onMenuSave(() => { void handleSaveRef.current(); });
+    const cleanupSaveAs = window.electronAPI.onMenuSaveAs(() => { void handleSaveAsRef.current(); });
     const cleanupUndo = window.electronAPI.onMenuUndo(() => undo());
     const cleanupRedo = window.electronAPI.onMenuRedo(() => redo());
 
@@ -101,6 +114,8 @@ function App() {
       const workbookTabs = parsed.tabs.map((tab) => ({
         name: tab.name,
         data: tab.data,
+        formats: tab.formats,
+        columnWidths: tab.columnWidths,
       }));
       setWorkbook(workbookTabs, result.path, result.name);
     }
@@ -133,6 +148,13 @@ function App() {
   const handlePanicClose = useCallback(() => {
     window.electronAPI.panicClose();
   }, []);
+
+  useEffect(() => {
+    handleNewRef.current = handleNew;
+    handleOpenRef.current = handleOpen;
+    handleSaveRef.current = handleSave;
+    handleSaveAsRef.current = handleSaveAs;
+  }, [handleNew, handleOpen, handleSave, handleSaveAs]);
 
   const startTabRename = useCallback((tabId: string, tabName: string) => {
     setEditingTabId(tabId);
@@ -251,12 +273,26 @@ function App() {
   const pasteTextAtSelection = useCallback((text: string) => {
     if (!state.selectedCell || state.editingCell || !text) return;
 
-    const rows = text.split('\n').map((row) => {
-      if (row.includes('\t')) {
-        return row.split('\t');
+    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const hasStructuredData = normalized.includes('\n') || normalized.includes('\t');
+
+    let rows: string[][];
+    if (!hasStructuredData) {
+      rows = [[normalized]];
+    } else {
+      rows = normalized.split('\n').map((row) => {
+        if (row.includes('\t')) {
+          return row.split('\t');
+        }
+        return row.split(',');
+      });
+
+      while (rows.length > 1 && rows[rows.length - 1].every((cell) => '' === cell)) {
+        rows.pop();
       }
-      return row.split(',');
-    });
+    }
+
+    if (!rows.length) return;
 
     pasteData(state.selectedCell.row, state.selectedCell.col, rows);
   }, [state.selectedCell, state.editingCell, pasteData]);
@@ -374,6 +410,22 @@ function App() {
     }
   }, [state.selectedCell, state.editingCell, pasteTextAtSelection]);
 
+  const toggleSelectionFormat = useCallback((formatType: 'bold' | 'italic' | 'underline') => {
+    if (!state.selectedRange) return;
+    toggleFormat(state.selectedRange, formatType);
+  }, [state.selectedRange, toggleFormat]);
+
+  const setSelectionColor = useCallback((colorType: 'textColor' | 'backgroundColor') => {
+    if (!state.selectedRange) return;
+    const value = 'textColor' === colorType ? textColorPicker : backgroundColorPicker;
+    setFormatColor(state.selectedRange, colorType, value);
+  }, [state.selectedRange, setFormatColor, textColorPicker, backgroundColorPicker]);
+
+  const clearSelectionColor = useCallback((colorType: 'textColor' | 'backgroundColor') => {
+    if (!state.selectedRange) return;
+    setFormatColor(state.selectedRange, colorType, '');
+  }, [state.selectedRange, setFormatColor]);
+
   // Handle copy/paste
   useEffect(() => {
     const handleCopy = async (e: ClipboardEvent) => {
@@ -446,6 +498,12 @@ function App() {
       if (!is_modifier_pressed) return;
 
       const key = e.key.toLowerCase();
+
+      if ('f' === key && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        setShowFormattingBar((prev: boolean) => !prev);
+        return;
+      }
 
       if ('g' === key && !e.shiftKey && !e.altKey) {
         e.preventDefault();
@@ -551,6 +609,36 @@ function App() {
         return;
       }
 
+      if ('b' === key && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        toggleSelectionFormat('bold');
+        return;
+      }
+
+      if ('i' === key && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        toggleSelectionFormat('italic');
+        return;
+      }
+
+      if ('u' === key && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        toggleSelectionFormat('underline');
+        return;
+      }
+
+      if ('h' === key && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        setSelectionColor('backgroundColor');
+        return;
+      }
+
+      if ('t' === key && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        setSelectionColor('textColor');
+        return;
+      }
+
       if ('r' === key && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         fillSelectionRight();
@@ -595,6 +683,8 @@ function App() {
     clearSelectedRangeValues,
     fillSelectionDown,
     fillSelectionRight,
+    toggleSelectionFormat,
+    setSelectionColor,
     insertFromSelection,
     deleteFromSelection,
     runPasteFromClipboard,
@@ -608,18 +698,41 @@ function App() {
         isDirty={state.isDirty}
         canUndo={canUndo()}
         canRedo={canRedo()}
+        showFormattingBar={showFormattingBar}
+        hasSelection={!!state.selectedRange}
+        textColor={textColorPicker}
+        backgroundColor={backgroundColorPicker}
         onNew={handleNew}
         onOpen={handleOpen}
         onSave={handleSave}
         onSaveAs={handleSaveAs}
         onUndo={undo}
         onRedo={redo}
+        onToggleBold={() => toggleSelectionFormat('bold')}
+        onToggleItalic={() => toggleSelectionFormat('italic')}
+        onToggleUnderline={() => toggleSelectionFormat('underline')}
+        onTextColorChange={(color: string) => {
+          setTextColorPicker(color);
+          if (state.selectedRange) {
+            setFormatColor(state.selectedRange, 'textColor', color);
+          }
+        }}
+        onBackgroundColorChange={(color: string) => {
+          setBackgroundColorPicker(color);
+          if (state.selectedRange) {
+            setFormatColor(state.selectedRange, 'backgroundColor', color);
+          }
+        }}
+        onClearTextColor={() => clearSelectionColor('textColor')}
+        onClearBackgroundColor={() => clearSelectionColor('backgroundColor')}
         onPanicClose={handlePanicClose}
       />
 
       <div className="app-body">
         <Grid
           data={state.data}
+          cellFormats={state.cellFormats}
+          columnWidths={state.columnWidths}
           selectedCell={state.selectedCell}
           selectedRange={state.selectedRange}
           editingCell={state.editingCell}
@@ -633,6 +746,13 @@ function App() {
           onColHeaderClick={handleColHeaderClick}
           onRowHeaderContextMenu={handleRowHeaderContextMenu}
           onColHeaderContextMenu={handleColHeaderContextMenu}
+          onInsertRow={insertRow}
+          onRowMove={moveRow}
+          onColMove={moveColumn}
+          onColumnWidthsChange={setColumnWidths}
+          onOpenExternalUrl={(url: string) => {
+            window.electronAPI.openExternalUrl(url);
+          }}
         />
       </div>
 

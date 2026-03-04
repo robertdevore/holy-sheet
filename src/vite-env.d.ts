@@ -21,6 +21,7 @@ interface Window {
       isDev: boolean;
     }>;
     getAppVersion: () => Promise<string>;
+    openExternalUrl: (url: string) => Promise<{ success: boolean; error?: string }>;
     onMenuNew: (callback: () => void) => () => void;
     onMenuOpen: (callback: () => void) => () => void;
     onMenuSave: (callback: () => void) => () => void;

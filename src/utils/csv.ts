@@ -8,10 +8,20 @@ export interface CsvData {
   colCount: number;
 }
 
+export interface CellFormatData {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  textColor?: string;
+  backgroundColor?: string;
+}
+
 export interface WorkbookTab {
   id: string;
   name: string;
   data: string[][];
+  formats?: Record<string, CellFormatData>;
+  columnWidths?: number[];
 }
 
 export interface WorkbookData {
@@ -20,6 +30,8 @@ export interface WorkbookData {
 
 const WORKBOOK_HEADER = '#HOLYSHEET_TABS_V1';
 const WORKBOOK_TAB_PREFIX = '#TAB:';
+const WORKBOOK_FORMAT_PREFIX = '#FORMAT:';
+const WORKBOOK_WIDTHS_PREFIX = '#WIDTHS:';
 
 /**
  * Detect the delimiter used in a CSV string
@@ -147,6 +159,8 @@ export function parseWorkbook(content: string): WorkbookData {
           id: 'sheet-1',
           name: 'Sheet1',
           data: parseCsv(content).data,
+          formats: {},
+          columnWidths: [],
         },
       ],
     };
@@ -155,6 +169,8 @@ export function parseWorkbook(content: string): WorkbookData {
   const lines = normalizedContent.split('\n');
   const tabs: WorkbookTab[] = [];
   let currentTabName: string | null = null;
+  let currentTabFormats: Record<string, CellFormatData> = {};
+  let currentTabColumnWidths: number[] = [];
   let currentTabLines: string[] = [];
 
   const flushCurrentTab = () => {
@@ -166,8 +182,12 @@ export function parseWorkbook(content: string): WorkbookData {
       id: `sheet-${tabs.length + 1}`,
       name: currentTabName,
       data: parsed.data,
+      formats: currentTabFormats,
+      columnWidths: currentTabColumnWidths,
     });
     currentTabLines = [];
+    currentTabFormats = {};
+    currentTabColumnWidths = [];
   };
 
   for (let i = 1; i < lines.length; i++) {
@@ -181,6 +201,52 @@ export function parseWorkbook(content: string): WorkbookData {
       } catch (_error) {
         currentTabName = encodedName || `Sheet${tabs.length + 1}`;
       }
+      continue;
+    }
+
+    if (line.startsWith(WORKBOOK_FORMAT_PREFIX)) {
+      const encodedFormats = line.substring(WORKBOOK_FORMAT_PREFIX.length);
+
+      if (!encodedFormats) {
+        currentTabFormats = {};
+        continue;
+      }
+
+      try {
+        const decoded = decodeURIComponent(encodedFormats);
+        const parsedFormats = JSON.parse(decoded) as Record<string, CellFormatData>;
+        currentTabFormats = parsedFormats && 'object' === typeof parsedFormats ? parsedFormats : {};
+      } catch (_error) {
+        currentTabFormats = {};
+      }
+
+      continue;
+    }
+
+    if (line.startsWith(WORKBOOK_WIDTHS_PREFIX)) {
+      const encodedWidths = line.substring(WORKBOOK_WIDTHS_PREFIX.length);
+
+      if (!encodedWidths) {
+        currentTabColumnWidths = [];
+        continue;
+      }
+
+      try {
+        const decoded = decodeURIComponent(encodedWidths);
+        const parsedWidths = JSON.parse(decoded);
+
+        if (Array.isArray(parsedWidths)) {
+          currentTabColumnWidths = parsedWidths.map((width) => {
+            const numeric_width = Number(width);
+            return Number.isFinite(numeric_width) && numeric_width > 0 ? numeric_width : 0;
+          });
+        } else {
+          currentTabColumnWidths = [];
+        }
+      } catch (_error) {
+        currentTabColumnWidths = [];
+      }
+
       continue;
     }
 
@@ -198,6 +264,8 @@ export function parseWorkbook(content: string): WorkbookData {
           id: 'sheet-1',
           name: 'Sheet1',
           data: createEmptyGrid(),
+          formats: {},
+          columnWidths: [],
         },
       ],
     };
@@ -212,6 +280,12 @@ export function parseWorkbook(content: string): WorkbookData {
 export function serializeCsv(data: string[][], delimiter: string = ','): string {
   let lastRowWithData = -1;
   let lastColWithData = -1;
+  let maxColsInGrid = 0;
+
+  for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+    const row = data[rowIndex] || [];
+    maxColsInGrid = Math.max(maxColsInGrid, row.length);
+  }
 
   for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
     const row = data[rowIndex] || [];
@@ -228,9 +302,13 @@ export function serializeCsv(data: string[][], delimiter: string = ','): string 
     return '';
   }
 
+  const preserveGridShape = true;
+  const finalLastRow = preserveGridShape ? Math.max(0, data.length - 1) : lastRowWithData;
+  const finalLastCol = preserveGridShape ? Math.max(0, maxColsInGrid - 1) : lastColWithData;
+
   const lines: string[] = [];
 
-  for (let rowIndex = 0; rowIndex <= lastRowWithData; rowIndex++) {
+  for (let rowIndex = 0; rowIndex <= finalLastRow; rowIndex++) {
     const row = data[rowIndex] || [];
     const cells = row.map((cell) => {
       // Check if cell needs quoting
@@ -249,11 +327,11 @@ export function serializeCsv(data: string[][], delimiter: string = ','): string 
       return cell;
     });
 
-    while (cells.length < lastColWithData + 1) {
+    while (cells.length < finalLastCol + 1) {
       cells.push('');
     }
 
-    const trimmedCells = cells.slice(0, lastColWithData + 1);
+    const trimmedCells = cells.slice(0, finalLastCol + 1);
 
     lines.push(trimmedCells.join(delimiter));
   }
@@ -265,9 +343,11 @@ export function serializeCsv(data: string[][], delimiter: string = ','): string 
  * Serialize workbook tabs into HolySheet multi-tab CSV format.
  */
 export function serializeWorkbook(tabs: WorkbookTab[]): string {
-  const safeTabs = tabs.length ? tabs : [{ id: 'sheet-1', name: 'Sheet1', data: createEmptyGrid() }];
+  const safeTabs = tabs.length ? tabs : [{ id: 'sheet-1', name: 'Sheet1', data: createEmptyGrid(), formats: {}, columnWidths: [] }];
+  const hasAnyFormatting = safeTabs.some((tab) => !!tab.formats && Object.keys(tab.formats).length > 0);
+  const hasAnyColumnWidths = safeTabs.some((tab) => !!tab.columnWidths && tab.columnWidths.length > 0);
 
-  if (1 === safeTabs.length) {
+  if (1 === safeTabs.length && !hasAnyFormatting && !hasAnyColumnWidths) {
     return serializeCsv(safeTabs[0].data);
   }
 
@@ -276,6 +356,15 @@ export function serializeWorkbook(tabs: WorkbookTab[]): string {
   for (const tab of safeTabs) {
     const encodedName = encodeURIComponent(tab.name || 'Sheet');
     lines.push(`${WORKBOOK_TAB_PREFIX}${encodedName}`);
+
+    const formats = tab.formats || {};
+    const encodedFormats = encodeURIComponent(JSON.stringify(formats));
+    lines.push(`${WORKBOOK_FORMAT_PREFIX}${encodedFormats}`);
+
+    const columnWidths = tab.columnWidths || [];
+    const encodedWidths = encodeURIComponent(JSON.stringify(columnWidths));
+    lines.push(`${WORKBOOK_WIDTHS_PREFIX}${encodedWidths}`);
+
     lines.push(serializeCsv(tab.data));
   }
 

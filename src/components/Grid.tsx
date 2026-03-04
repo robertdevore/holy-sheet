@@ -4,6 +4,8 @@ import { CellCoord, CellRange, colIndexToLetter, getRangeBounds, isCellInRange }
 
 interface GridProps {
   data: string[][];
+  cellFormats: Record<string, { bold?: boolean; italic?: boolean; underline?: boolean; textColor?: string; backgroundColor?: string }>;
+  columnWidths: number[];
   selectedCell: CellCoord | null;
   selectedRange: CellRange | null;
   editingCell: CellCoord | null;
@@ -17,6 +19,11 @@ interface GridProps {
   onColHeaderClick: (col: number) => void;
   onRowHeaderContextMenu: (row: number, event: React.MouseEvent) => void;
   onColHeaderContextMenu: (col: number, event: React.MouseEvent) => void;
+  onInsertRow: (rowIndex: number) => void;
+  onRowMove: (fromIndex: number, toIndex: number) => void;
+  onColMove: (fromIndex: number, toIndex: number) => void;
+  onColumnWidthsChange: (columnWidths: number[]) => void;
+  onOpenExternalUrl: (url: string) => void;
 }
 
 const CELL_WIDTH = 120;
@@ -27,6 +34,8 @@ const MIN_COLUMN_WIDTH = 60;
 export const Grid: React.FC<GridProps> = (props: GridProps) => {
   const {
     data,
+    cellFormats,
+    columnWidths: persistedColumnWidths,
     selectedCell,
     selectedRange,
     editingCell,
@@ -40,6 +49,11 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
     onColHeaderClick,
     onRowHeaderContextMenu,
     onColHeaderContextMenu,
+    onInsertRow,
+    onRowMove,
+    onColMove,
+    onColumnWidthsChange,
+    onOpenExternalUrl,
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<any>(null);
@@ -56,25 +70,58 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
   const pending_initial_edit_value = useRef<string | null>(null);
   const resize_start_x = useRef(0);
   const resize_start_width = useRef(CELL_WIDTH);
+  const suppressHeaderClick = useRef(false);
+  const headerDragOrigin = useRef<{ type: 'row' | 'col'; index: number; x: number; y: number } | null>(null);
+  const onInsertRowRef = useRef(onInsertRow);
+  const columnWidthsRef = useRef<number[]>([]);
+  const onCellClickRef = useRef(onCellClick);
+  const onCellDoubleClickRef = useRef(onCellDoubleClick);
 
   const rowCount = data.length;
   const colCount = data[0]?.length || 0;
 
   useEffect(() => {
-    setColumnWidths((prev: number[]) => {
-      const next = prev.slice(0, colCount);
-      while (next.length < colCount) {
-        next.push(CELL_WIDTH);
-      }
-      return next;
+    onInsertRowRef.current = onInsertRow;
+    onCellClickRef.current = onCellClick;
+    onCellDoubleClickRef.current = onCellDoubleClick;
+  }, [onInsertRow, onCellClick, onCellDoubleClick]);
+
+  useEffect(() => {
+    columnWidthsRef.current = columnWidths;
+  }, [columnWidths]);
+
+  const commitEdit = useCallback((row: number, col: number, value: string) => {
+    onCellEdit(row, col, value);
+    onEditComplete();
+  }, [onCellEdit, onEditComplete]);
+
+  const focusAndSelectCell = useCallback((row: number, col: number) => {
+    if (gridRef.current && gridRef.current.scrollToItem) {
+      gridRef.current.scrollToItem({ rowIndex: row, columnIndex: col, align: 'smart' });
+    }
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        onCellClickRef.current(row, col);
+      });
     });
-  }, [colCount]);
+  }, []);
+
+  useEffect(() => {
+    const next = (persistedColumnWidths || []).slice(0, colCount).map((width) => {
+      const numeric_width = Number(width);
+      return Number.isFinite(numeric_width) && numeric_width > 0 ? numeric_width : 0;
+    });
+    setColumnWidths(next);
+  }, [persistedColumnWidths, colCount]);
 
   const getColumnWidth = useCallback((index: number) => {
     return columnWidths[index] || CELL_WIDTH;
   }, [columnWidths]);
 
-  const totalColumnWidth = columnWidths.reduce((total: number, width: number) => total + width, 0);
+  const totalColumnWidth = Array.from({ length: colCount }).reduce((total: number, _value, index: number) => {
+    return total + getColumnWidth(index);
+  }, 0);
   const selectionBounds = selectedRange ? getRangeBounds(selectedRange) : null;
   const isFullRowSelection = !!selectionBounds && selectionBounds.minCol === 0 && selectionBounds.maxCol === Math.max(0, colCount - 1);
   const isFullColSelection = !!selectionBounds && selectionBounds.minRow === 0 && selectionBounds.maxRow === Math.max(0, rowCount - 1);
@@ -90,8 +137,19 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
     };
 
     updateSize();
+    const observer = new ResizeObserver(() => {
+      updateSize();
+    });
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
     window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
   }, []);
 
   // Keep editor value/focus stable while typing
@@ -143,8 +201,6 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
       if (!editInputRef.current) return;
       if (document.activeElement !== editInputRef.current) {
         editInputRef.current.focus();
-        const value_length = editInputRef.current.value.length;
-        editInputRef.current.setSelectionRange(value_length, value_length);
       }
     });
 
@@ -156,6 +212,15 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
   // Handle keyboard navigation when not editing
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (
+        'INPUT' === target.tagName ||
+        'TEXTAREA' === target.tagName ||
+        target.isContentEditable
+      )) {
+        return;
+      }
+
       if (editingCell) {
         return;
       }
@@ -295,6 +360,7 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
 
     const handleResizeEnd = () => {
       setResizingColumn(null);
+      onColumnWidthsChange(columnWidthsRef.current.slice());
     };
 
     window.addEventListener('mousemove', handleResizeMove);
@@ -304,7 +370,7 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
       window.removeEventListener('mousemove', handleResizeMove);
       window.removeEventListener('mouseup', handleResizeEnd);
     };
-  }, [resizingColumn]);
+  }, [resizingColumn, onColumnWidthsChange]);
 
   const handleGridScroll = useCallback(({ scrollLeft, scrollTop }: { scrollLeft: number; scrollTop: number }) => {
     setScrollLeft(scrollLeft);
@@ -324,6 +390,15 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
     const isRangeRight = !!rangeBounds && isInRange && columnIndex === rangeBounds.maxCol;
     const isEditing = editingCell?.row === rowIndex && editingCell?.col === columnIndex;
     const value = data[rowIndex]?.[columnIndex] || '';
+    const formatKey = `${rowIndex}:${columnIndex}`;
+    const format = cellFormats[formatKey] || {};
+
+    const textStyle: React.CSSProperties = {
+      fontWeight: format.bold ? 700 : undefined,
+      fontStyle: format.italic ? 'italic' : undefined,
+      textDecoration: format.underline ? 'underline' : undefined,
+      color: format.textColor || undefined,
+    };
 
     const rangeOutlineShadows: string[] = [];
     if (isInRange && !is_single_cell_selection) {
@@ -334,8 +409,8 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
     }
 
     const cellStyle = rangeOutlineShadows.length > 0
-      ? { ...style, boxShadow: rangeOutlineShadows.join(', ') }
-      : style;
+      ? { ...style, boxShadow: rangeOutlineShadows.join(', '), backgroundColor: format.backgroundColor || undefined }
+      : { ...style, backgroundColor: format.backgroundColor || undefined };
 
     return (
       <div
@@ -354,31 +429,67 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value)}
             onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
               e.stopPropagation();
+
+              const is_modifier_pressed = e.metaKey || e.ctrlKey;
+              if (is_modifier_pressed && 'a' === e.key.toLowerCase()) {
+                e.preventDefault();
+                const input = e.currentTarget;
+                input.setSelectionRange(0, input.value.length);
+                return;
+              }
+
               if (e.key === 'Enter') {
                 e.preventDefault();
-                onCellEdit(rowIndex, columnIndex, editValue);
-                onEditComplete();
+                commitEdit(rowIndex, columnIndex, editValue);
+
+                if (!e.shiftKey && rowIndex === rowCount - 1) {
+                  window.setTimeout(() => {
+                    onInsertRowRef.current(rowCount);
+                    focusAndSelectCell(rowIndex + 1, columnIndex);
+                  }, 0);
+                  return;
+                }
+
+                const nextRow = e.shiftKey ? Math.max(0, rowIndex - 1) : rowIndex + 1;
+
+                focusAndSelectCell(nextRow, columnIndex);
               } else if (e.key === 'Escape') {
                 e.preventDefault();
                 onEditCancel();
               } else if (e.key === 'Tab') {
                 e.preventDefault();
-                onCellEdit(rowIndex, columnIndex, editValue);
-                onEditComplete();
+                commitEdit(rowIndex, columnIndex, editValue);
                 const nextCol = e.shiftKey
                   ? Math.max(0, columnIndex - 1)
                   : Math.min(colCount - 1, columnIndex + 1);
                 onCellClick(rowIndex, nextCol);
               }
             }}
+            onBlur={() => {
+              commitEdit(rowIndex, columnIndex, editValue);
+            }}
             onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
             onDoubleClick={(e: React.MouseEvent) => e.stopPropagation()}
             className="cell-edit-input"
+            style={textStyle}
           />
+        ) : (/^(https?:\/\/|www\.)\S+$/i.test(value.trim()) ? (
+          <a
+            href="#"
+            className="cell-link"
+            style={textStyle}
+            onClick={(e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onOpenExternalUrl(value.trim());
+            }}
+          >
+            {value}
+          </a>
         ) : (
-          <span className="cell-value">{value}</span>
-        )}
+          <span className="cell-value" style={textStyle}>{value}</span>
+        ))}
       </div>
     );
   };
@@ -399,7 +510,64 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
               key={i}
               className={`column-header ${isFullColSelection && selectionBounds && i >= selectionBounds.minCol && i <= selectionBounds.maxCol ? 'selected-header' : ''}`}
               style={{ width: getColumnWidth(i) }}
-              onClick={() => onColHeaderClick(i)}
+              draggable
+              onClick={() => {
+                if (suppressHeaderClick.current) return;
+                onColHeaderClick(i);
+              }}
+              onMouseDown={(e: React.MouseEvent) => {
+                headerDragOrigin.current = { type: 'col', index: i, x: e.clientX, y: e.clientY };
+              }}
+              onDragStart={(e: React.DragEvent) => {
+                const target = e.target as HTMLElement;
+                if (target.classList.contains('column-resize-handle')) {
+                  e.preventDefault();
+                  return;
+                }
+
+                const origin = headerDragOrigin.current;
+                if (!origin || origin.type !== 'col' || origin.index !== i) {
+                  e.preventDefault();
+                  return;
+                }
+
+                const movedX = Math.abs(e.clientX - origin.x);
+                const movedY = Math.abs(e.clientY - origin.y);
+                if (movedX < 3 && movedY < 3) {
+                  e.preventDefault();
+                  return;
+                }
+
+                suppressHeaderClick.current = true;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(i));
+              }}
+              onDragOver={(e: React.DragEvent) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(e: React.DragEvent) => {
+                e.preventDefault();
+                const fromValue = Number(e.dataTransfer.getData('text/plain'));
+                if (Number.isNaN(fromValue) || fromValue === i) return;
+
+                setColumnWidths((prev: number[]) => {
+                  const next = [...prev];
+                  const value = next.splice(fromValue, 1)[0];
+                  const insertAt = fromValue < i ? i - 1 : i;
+                  next.splice(insertAt, 0, value);
+                  onColumnWidthsChange(next);
+                  return next;
+                });
+
+                onColMove(fromValue, i);
+              }}
+              onDragEnd={() => {
+                headerDragOrigin.current = null;
+                window.setTimeout(() => {
+                  suppressHeaderClick.current = false;
+                }, 0);
+              }}
               onContextMenu={(e: React.MouseEvent) => {
                 e.preventDefault();
                 onColHeaderContextMenu(i, e);
@@ -426,7 +594,48 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
               key={i}
               className={`row-header ${isFullRowSelection && selectionBounds && i >= selectionBounds.minRow && i <= selectionBounds.maxRow ? 'selected-header' : ''}`}
               style={{ height: CELL_HEIGHT }}
-              onClick={() => onRowHeaderClick(i)}
+              draggable
+              onClick={() => {
+                if (suppressHeaderClick.current) return;
+                onRowHeaderClick(i);
+              }}
+              onMouseDown={(e: React.MouseEvent) => {
+                headerDragOrigin.current = { type: 'row', index: i, x: e.clientX, y: e.clientY };
+              }}
+              onDragStart={(e: React.DragEvent) => {
+                const origin = headerDragOrigin.current;
+                if (!origin || origin.type !== 'row' || origin.index !== i) {
+                  e.preventDefault();
+                  return;
+                }
+
+                const movedX = Math.abs(e.clientX - origin.x);
+                const movedY = Math.abs(e.clientY - origin.y);
+                if (movedX < 3 && movedY < 3) {
+                  e.preventDefault();
+                  return;
+                }
+
+                suppressHeaderClick.current = true;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(i));
+              }}
+              onDragOver={(e: React.DragEvent) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(e: React.DragEvent) => {
+                e.preventDefault();
+                const fromValue = Number(e.dataTransfer.getData('text/plain'));
+                if (Number.isNaN(fromValue) || fromValue === i) return;
+                onRowMove(fromValue, i);
+              }}
+              onDragEnd={() => {
+                headerDragOrigin.current = null;
+                window.setTimeout(() => {
+                  suppressHeaderClick.current = false;
+                }, 0);
+              }}
               onContextMenu={(e: React.MouseEvent) => {
                 e.preventDefault();
                 onRowHeaderContextMenu(i, e);

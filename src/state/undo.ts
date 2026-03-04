@@ -249,3 +249,63 @@ export function createDeleteColumnCommand(
     description: `Delete column ${colIndex}`,
   };
 }
+
+/**
+ * Create a command for row reordering
+ */
+export function createMoveRowCommand(
+  data: string[][],
+  fromIndex: number,
+  toIndex: number,
+  onChange: (newData: string[][]) => void
+): Command {
+  const normalizedToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+
+  const moveRow = (source: string[][], sourceIndex: number, destinationIndex: number): string[][] => {
+    const nextData = source.map((row) => [...row]);
+    const row = nextData.splice(sourceIndex, 1)[0];
+    nextData.splice(destinationIndex, 0, row);
+    return nextData;
+  };
+
+  return {
+    execute: () => {
+      onChange(moveRow(data, fromIndex, normalizedToIndex));
+    },
+    undo: () => {
+      onChange(moveRow(moveRow(data, fromIndex, normalizedToIndex), normalizedToIndex, fromIndex));
+    },
+    description: `Move row ${fromIndex} to ${toIndex}`,
+  };
+}
+
+/**
+ * Create a command for column reordering
+ */
+export function createMoveColumnCommand(
+  data: string[][],
+  fromIndex: number,
+  toIndex: number,
+  onChange: (newData: string[][]) => void
+): Command {
+  const normalizedToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+
+  const moveColumn = (source: string[][], sourceIndex: number, destinationIndex: number): string[][] => {
+    return source.map((row) => {
+      const nextRow = [...row];
+      const value = nextRow.splice(sourceIndex, 1)[0];
+      nextRow.splice(destinationIndex, 0, value);
+      return nextRow;
+    });
+  };
+
+  return {
+    execute: () => {
+      onChange(moveColumn(data, fromIndex, normalizedToIndex));
+    },
+    undo: () => {
+      onChange(moveColumn(moveColumn(data, fromIndex, normalizedToIndex), normalizedToIndex, fromIndex));
+    },
+    description: `Move column ${fromIndex} to ${toIndex}`,
+  };
+}
