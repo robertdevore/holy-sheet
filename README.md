@@ -7,6 +7,7 @@ A privacy-first, portable CSV editor for desktop. HolySheet is designed to run e
 HolySheet is a minimal, offline, single-user CSV editor that feels like a tiny Google Sheets, but ONLY for editing raw CSV data (strings/numbers) - no formulas, no cloud sync, no telemetry.
 
 **Key Features:**
+
 - ✅ Clean, spreadsheet-like grid interface
 - ✅ Open/Edit/Save CSV files
 - ✅ Multiple tabs per file (Google Sheets-style tab strip)
@@ -20,6 +21,7 @@ HolySheet is a minimal, offline, single-user CSV editor that feels like a tiny G
 - ✅ **Privacy-first** - no logs, no telemetry, no recent files tracking
 
 **What HolySheet is NOT:**
+
 - ❌ No formulas, functions, or calculations
 - ❌ No charts, pivot tables
 - ❌ No cloud sync or collaboration features
@@ -33,6 +35,7 @@ HolySheet is a minimal, offline, single-user CSV editor that feels like a tiny G
 HolySheet is designed to run from (and store everything inside) an encrypted folder that you mount/unmount manually.
 
 **Operational Flow:**
+
 1. Mount your encrypted volume (e.g., VeraCrypt, Cryptomator, APFS encrypted, etc.)
 2. Launch HolySheet from within the mounted path
 3. Work with your CSV files (all stored in the encrypted volume)
@@ -44,6 +47,7 @@ When unmounted, HolySheet leaves no recoverable traces outside the encrypted fol
 ### Privacy Guarantees
 
 ✅ **What HolySheet DOES:**
+
 - Redirects ALL Electron userData/cache/temp to `.holysheet/` folder next to the executable
 - Clears OS recent documents list on startup and after file operations
 - Stores undo/redo history only in memory (never persisted)
@@ -51,6 +55,7 @@ When unmounted, HolySheet leaves no recoverable traces outside the encrypted fol
 - Provides "Panic Close" feature for immediate shutdown without saving
 
 ❌ **What HolySheet DOES NOT:**
+
 - Make any network requests (no update checks, no telemetry)
 - Write logs outside the portable folder
 - Maintain a "recent files" list
@@ -60,6 +65,7 @@ When unmounted, HolySheet leaves no recoverable traces outside the encrypted fol
 ### Known Limitations
 
 ⚠️ HolySheet cannot prevent all OS-level traces:
+
 - **Swap/page files**: OS may swap RAM to disk (use encrypted swap or disable swap)
 - **Filesystem journaling**: Some filesystems log operations
 - **Window server snapshots**: macOS/Windows may cache window previews
@@ -77,6 +83,7 @@ When unmounted, HolySheet leaves no recoverable traces outside the encrypted fol
 ### Development Mode
 
 1. **Clone/download** this repository into your encrypted folder:
+
    ```bash
    cd /path/to/your/encrypted/folder
    git clone <repo-url> holysheet
@@ -84,11 +91,13 @@ When unmounted, HolySheet leaves no recoverable traces outside the encrypted fol
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 3. **Ensure sentinel file exists** (auto-created in dev mode):
+
    ```bash
    # The file HOLYSHEET_PORTABLE.txt should exist in the root
    ls -la HOLYSHEET_PORTABLE.txt
@@ -102,15 +111,17 @@ When unmounted, HolySheet leaves no recoverable traces outside the encrypted fol
 ### Production Build
 
 1. **Build the application:**
+
    ```bash
    npm run build
    ```
 
    (You can also use `npm run package`; both produce distributable output in `release/`.)
-   
+
    `npm run build` now auto-syncs `release/HolySheet.app` from `release/mac/HolySheet.app`, so the top-level app bundle is always the latest build.
 
    To launch the synced app directly:
+
    ```bash
    npm run open:release
    ```
@@ -118,16 +129,19 @@ When unmounted, HolySheet leaves no recoverable traces outside the encrypted fol
 2. **Locate the built app** in `release/mac/` (or use the synced top-level app `release/HolySheet.app`, or the DMG in `release/`)
 
 3. **Move the entire app** into your encrypted folder:
+
    ```bash
    cp -r release/mac/HolySheet.app /path/to/encrypted/folder/
    ```
 
    Or, install from DMG:
+
    ```bash
    open release/HolySheet-<version>.dmg
    ```
 
 4. **Create sentinel file** in the same directory as the app:
+
    ```bash
    # macOS/Linux
    cd /path/to/encrypted/folder
@@ -198,34 +212,38 @@ In packaged macOS builds, this means the file should be placed in the same folde
 ### Text Formatting
 
 - Select a cell range (or full row/column via headers), then use toolbar controls:
-   - **B / I / U** buttons for bold, italic, underline
-   - **T** color picker for text color
-   - **Bg** color picker for background color
-   - **Tx / Bx** buttons to clear text/background colors
+  - **B / I / U** buttons for bold, italic, underline
+  - **T** color picker for text color
+  - **Bg** color picker for background color
+  - **Tx / Bx** buttons to clear text/background colors
 - Keyboard shortcuts also work for styles:
-   - **Bold:** Cmd/Ctrl+B
-   - **Italic:** Cmd/Ctrl+I
-   - **Underline:** Cmd/Ctrl+U
+  - **Bold:** Cmd/Ctrl+B
+  - **Italic:** Cmd/Ctrl+I
+  - **Underline:** Cmd/Ctrl+U
 - Press the same style shortcut again to toggle it off for the selected range
 - Toggle formatting bar visibility: **Cmd/Ctrl+Shift+F**
 
 ### Row & Column Operations
 
 **Right-click** on row/column headers for context menu:
+
 - Insert Row Above/Below
 - Delete Row
 - Insert Column Left/Right
 - Delete Column
 
 **Reorder rows/columns:**
+
 - Click and drag a **row number** to move that row to a new position
 - Click and drag a **column letter** to move that column to a new position
 
 **Column resizing:**
+
 - Drag the divider at the right edge of any column header
 - Custom column widths are saved with the file and restored when reopening in HolySheet
 
 **Keyboard (when full row/column is selected):**
+
 - **Insert:** Cmd/Ctrl++
 - **Delete:** Cmd/Ctrl+-
 
@@ -278,41 +296,41 @@ Use this feature if you need to close HolySheet instantly (e.g., someone enters 
 
 ## Keyboard Shortcuts
 
-| Action | macOS | Windows/Linux |
-|--------|-------|---------------|
-| New | Cmd+N | Ctrl+N |
-| Open | Cmd+O | Ctrl+O |
-| Save | Cmd+S | Ctrl+S |
-| Save As | Cmd+Shift+S | Ctrl+Shift+S |
-| Undo | Cmd+Z | Ctrl+Z |
-| Redo | Cmd+Shift+Z | Ctrl+Shift+Z (or Ctrl+Y) |
-| Select All | Cmd+A | Ctrl+A |
-| Clear Multi-Selection | Cmd+Shift+A | Ctrl+Shift+A |
-| Copy | Cmd+C | Ctrl+C |
-| Copy as CSV | Cmd+Shift+C | Ctrl+Shift+C |
-| Cut | Cmd+X | Ctrl+X |
-| Paste | Cmd+V | Ctrl+V |
-| Paste Values | Cmd+Shift+V | Ctrl+Shift+V |
-| Fill Down | Cmd+D | Ctrl+D |
-| Fill Right | Cmd+R | Ctrl+R |
-| Bold selection | Cmd+B | Ctrl+B |
-| Italic selection | Cmd+I | Ctrl+I |
-| Underline selection | Cmd+U | Ctrl+U |
-| Toggle formatting bar | Cmd+Shift+F | Ctrl+Shift+F |
-| Apply current background color | Cmd+Shift+H | Ctrl+Shift+H |
-| Apply current text color | Cmd+Shift+T | Ctrl+Shift+T |
-| Insert Row/Column* | Cmd++ | Ctrl++ |
-| Delete Row/Column* | Cmd+- | Ctrl+- |
-| Go to Cell | Cmd+G | Ctrl+G |
-| Panic Close | Cmd+Shift+Q | Ctrl+Shift+Q |
-| Navigate | Arrow Keys | Arrow Keys |
-| Jump to Boundary | Cmd/Ctrl + Arrow Keys | Ctrl + Arrow Keys |
-| Row Start/End | Home / End | Home / End |
-| Edit Cell | Enter or F2 | Enter or F2 |
-| Cancel Edit | Esc | Esc |
-| Move Right | Tab | Tab |
-| Move Left | Shift+Tab | Shift+Tab |
-| Clear Cell(s) | Delete/Backspace | Delete/Backspace |
+| Action                         | macOS                 | Windows/Linux            |
+| ------------------------------ | --------------------- | ------------------------ |
+| New                            | Cmd+N                 | Ctrl+N                   |
+| Open                           | Cmd+O                 | Ctrl+O                   |
+| Save                           | Cmd+S                 | Ctrl+S                   |
+| Save As                        | Cmd+Shift+S           | Ctrl+Shift+S             |
+| Undo                           | Cmd+Z                 | Ctrl+Z                   |
+| Redo                           | Cmd+Shift+Z           | Ctrl+Shift+Z (or Ctrl+Y) |
+| Select All                     | Cmd+A                 | Ctrl+A                   |
+| Clear Multi-Selection          | Cmd+Shift+A           | Ctrl+Shift+A             |
+| Copy                           | Cmd+C                 | Ctrl+C                   |
+| Copy as CSV                    | Cmd+Shift+C           | Ctrl+Shift+C             |
+| Cut                            | Cmd+X                 | Ctrl+X                   |
+| Paste                          | Cmd+V                 | Ctrl+V                   |
+| Paste Values                   | Cmd+Shift+V           | Ctrl+Shift+V             |
+| Fill Down                      | Cmd+D                 | Ctrl+D                   |
+| Fill Right                     | Cmd+R                 | Ctrl+R                   |
+| Bold selection                 | Cmd+B                 | Ctrl+B                   |
+| Italic selection               | Cmd+I                 | Ctrl+I                   |
+| Underline selection            | Cmd+U                 | Ctrl+U                   |
+| Toggle formatting bar          | Cmd+Shift+F           | Ctrl+Shift+F             |
+| Apply current background color | Cmd+Shift+H           | Ctrl+Shift+H             |
+| Apply current text color       | Cmd+Shift+T           | Ctrl+Shift+T             |
+| Insert Row/Column\*            | Cmd++                 | Ctrl++                   |
+| Delete Row/Column\*            | Cmd+-                 | Ctrl+-                   |
+| Go to Cell                     | Cmd+G                 | Ctrl+G                   |
+| Panic Close                    | Cmd+Shift+Q           | Ctrl+Shift+Q             |
+| Navigate                       | Arrow Keys            | Arrow Keys               |
+| Jump to Boundary               | Cmd/Ctrl + Arrow Keys | Ctrl + Arrow Keys        |
+| Row Start/End                  | Home / End            | Home / End               |
+| Edit Cell                      | Enter or F2           | Enter or F2              |
+| Cancel Edit                    | Esc                   | Esc                      |
+| Move Right                     | Tab                   | Tab                      |
+| Move Left                      | Shift+Tab             | Shift+Tab                |
+| Clear Cell(s)                  | Delete/Backspace      | Delete/Backspace         |
 
 \* Insert/Delete shortcut applies when a full row or full column selection is active.
 
@@ -321,6 +339,7 @@ Use this feature if you need to close HolySheet instantly (e.g., someone enters 
 ### Delimiter Detection
 
 HolySheet auto-detects the delimiter by analyzing the first line:
+
 - Counts occurrences of comma (`,`), semicolon (`;`), and tab (`\t`)
 - Uses the delimiter with the most occurrences
 - Falls back to comma if ambiguous
@@ -328,11 +347,13 @@ HolySheet auto-detects the delimiter by analyzing the first line:
 ### Quoting Rules
 
 **On Import:**
+
 - Quoted fields can contain delimiters, newlines, and quotes
 - Quotes inside quoted fields must be doubled (`""`)
 - Example: `"Hello ""World"""` → `Hello "World"`
 
 **On Export:**
+
 - Fields containing delimiter, quotes, or newlines are quoted
 - Quotes are escaped by doubling
 - Example: `Hello, "World"` → `"Hello, ""World"""`
@@ -349,11 +370,13 @@ HolySheet auto-detects the delimiter by analyzing the first line:
 HolySheet uses virtualized rendering (react-window) to handle large files efficiently.
 
 **Tested Performance:**
+
 - ✅ 20,000 rows x 30 columns: Smooth scrolling and editing
 - ✅ 50,000 rows x 20 columns: Usable (some lag on initial load)
 - ⚠️ 100,000+ rows: May experience slowdowns
 
 For very large CSVs (100k+ rows), consider:
+
 - Splitting into smaller files
 - Using specialized tools (pandas, CSVkit, etc.)
 
@@ -417,9 +440,11 @@ When running in portable mode, HolySheet stores all data in:
 ### "HolySheet must be run from within your encrypted folder"
 
 **Solution:** Create the sentinel file:
+
 ```bash
 echo "HolySheet portable mode enabled" > HOLYSHEET_PORTABLE.txt
 ```
+
 Place it next to the app launch target.
 On macOS, place it in the same folder as `HolySheet.app` (not inside the bundle).
 On Windows/Linux, place it in the same folder as the executable.

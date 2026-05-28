@@ -3,11 +3,13 @@
 ## For Development
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
 
 2. Run in dev mode:
+
    ```bash
    npm run electron:dev
    ```
@@ -17,6 +19,7 @@
 ## For Production
 
 1. Build the app:
+
    ```bash
    npm run build
    ```
@@ -41,6 +44,7 @@
 ## Need Help?
 
 See the full README.md for:
+
 - Complete feature list
 - Privacy & security details
 - Keyboard shortcuts
