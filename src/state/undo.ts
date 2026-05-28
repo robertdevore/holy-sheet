@@ -12,6 +12,18 @@ export class UndoStack {
   private undoStack: Command[] = [];
   private redoStack: Command[] = [];
   private maxStackSize: number = 100;
+  private onChange: (() => void) | null = null;
+
+  /** Register a callback invoked on every stack mutation (execute, undo, redo, clear). */
+  setOnChange(callback: () => void): void {
+    this.onChange = callback;
+  }
+
+  private notify(): void {
+    if (this.onChange) {
+      this.onChange();
+    }
+  }
 
   execute(command: Command): void {
     command.execute();
@@ -22,6 +34,7 @@ export class UndoStack {
     if (this.undoStack.length > this.maxStackSize) {
       this.undoStack.shift();
     }
+    this.notify();
   }
 
   undo(): boolean {
@@ -32,6 +45,7 @@ export class UndoStack {
     const command = this.undoStack.pop()!;
     command.undo();
     this.redoStack.push(command);
+    this.notify();
 
     return true;
   }
@@ -44,6 +58,7 @@ export class UndoStack {
     const command = this.redoStack.pop()!;
     command.execute();
     this.undoStack.push(command);
+    this.notify();
 
     return true;
   }
@@ -59,6 +74,7 @@ export class UndoStack {
   clear(): void {
     this.undoStack = [];
     this.redoStack = [];
+    this.notify();
   }
 }
 
@@ -71,7 +87,7 @@ export function createCellEditCommand(
   col: number,
   newValue: string,
   oldValue: string,
-  onChange: (newData: string[][]) => void
+  onChange: (newData: string[][]) => void,
 ): Command {
   return {
     execute: () => {
@@ -96,16 +112,19 @@ export function createPasteCommand(
   startRow: number,
   startCol: number,
   pastedData: string[][],
-  onChange: (newData: string[][]) => void
+  onChange: (newData: string[][]) => void,
 ): Command {
-  // Capture old values
-  const oldValues: string[][] = [];
+  // Capture old values only for cells that actually change
+  const oldValues: Array<{ row: number; col: number; value: string }> = [];
   for (let r = 0; r < pastedData.length; r++) {
-    oldValues[r] = [];
     for (let c = 0; c < pastedData[r].length; c++) {
       const row = startRow + r;
       const col = startCol + c;
-      oldValues[r][c] = data[row]?.[col] || '';
+      const oldVal = data[row]?.[col] || '';
+      const newVal = pastedData[r][c];
+      if (oldVal !== newVal) {
+        oldValues.push({ row, col, value: oldVal });
+      }
     }
   }
 
@@ -125,13 +144,9 @@ export function createPasteCommand(
     },
     undo: () => {
       const newData = data.map((r) => [...r]);
-      for (let r = 0; r < oldValues.length; r++) {
-        for (let c = 0; c < oldValues[r].length; c++) {
-          const row = startRow + r;
-          const col = startCol + c;
-          if (row < newData.length && col < newData[row].length) {
-            newData[row][col] = oldValues[r][c];
-          }
+      for (const { row, col, value } of oldValues) {
+        if (row < newData.length && col < newData[row].length) {
+          newData[row][col] = value;
         }
       }
       onChange(newData);
@@ -146,7 +161,7 @@ export function createPasteCommand(
 export function createInsertRowCommand(
   data: string[][],
   rowIndex: number,
-  onChange: (newData: string[][]) => void
+  onChange: (newData: string[][]) => void,
 ): Command {
   const colCount = data[0]?.length || 10;
 
@@ -171,7 +186,7 @@ export function createInsertRowCommand(
 export function createDeleteRowCommand(
   data: string[][],
   rowIndex: number,
-  onChange: (newData: string[][]) => void
+  onChange: (newData: string[][]) => void,
 ): Command {
   const deletedRow = [...data[rowIndex]];
 
@@ -196,7 +211,7 @@ export function createDeleteRowCommand(
 export function createInsertColumnCommand(
   data: string[][],
   colIndex: number,
-  onChange: (newData: string[][]) => void
+  onChange: (newData: string[][]) => void,
 ): Command {
   return {
     execute: () => {
@@ -225,7 +240,7 @@ export function createInsertColumnCommand(
 export function createDeleteColumnCommand(
   data: string[][],
   colIndex: number,
-  onChange: (newData: string[][]) => void
+  onChange: (newData: string[][]) => void,
 ): Command {
   const deletedColumn = data.map((row) => row[colIndex]);
 
@@ -257,11 +272,15 @@ export function createMoveRowCommand(
   data: string[][],
   fromIndex: number,
   toIndex: number,
-  onChange: (newData: string[][]) => void
+  onChange: (newData: string[][]) => void,
 ): Command {
   const normalizedToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
 
-  const moveRow = (source: string[][], sourceIndex: number, destinationIndex: number): string[][] => {
+  const moveRow = (
+    source: string[][],
+    sourceIndex: number,
+    destinationIndex: number,
+  ): string[][] => {
     const nextData = source.map((row) => [...row]);
     const row = nextData.splice(sourceIndex, 1)[0];
     nextData.splice(destinationIndex, 0, row);
@@ -286,11 +305,15 @@ export function createMoveColumnCommand(
   data: string[][],
   fromIndex: number,
   toIndex: number,
-  onChange: (newData: string[][]) => void
+  onChange: (newData: string[][]) => void,
 ): Command {
   const normalizedToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
 
-  const moveColumn = (source: string[][], sourceIndex: number, destinationIndex: number): string[][] => {
+  const moveColumn = (
+    source: string[][],
+    sourceIndex: number,
+    destinationIndex: number,
+  ): string[][] => {
     return source.map((row) => {
       const nextRow = [...row];
       const value = nextRow.splice(sourceIndex, 1)[0];
@@ -304,7 +327,9 @@ export function createMoveColumnCommand(
       onChange(moveColumn(data, fromIndex, normalizedToIndex));
     },
     undo: () => {
-      onChange(moveColumn(moveColumn(data, fromIndex, normalizedToIndex), normalizedToIndex, fromIndex));
+      onChange(
+        moveColumn(moveColumn(data, fromIndex, normalizedToIndex), normalizedToIndex, fromIndex),
+      );
     },
     description: `Move column ${fromIndex} to ${toIndex}`,
   };

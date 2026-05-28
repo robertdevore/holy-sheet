@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { createEmptyGrid, expandGrid } from '../utils/csv';
 import { CellCoord, CellRange, getRangeBounds } from '../utils/selection';
 import {
@@ -41,7 +41,12 @@ function createSheetId(): string {
   return `sheet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function createSheetTab(name: string = 'Sheet1', data?: string[][], formats?: CellFormatMap, columnWidths?: number[]): SheetTab {
+function createSheetTab(
+  name: string = 'Sheet1',
+  data?: string[][],
+  formats?: CellFormatMap,
+  columnWidths?: number[],
+): SheetTab {
   return {
     id: createSheetId(),
     name,
@@ -67,6 +72,11 @@ export interface AppState {
   filePath: string | null;
   fileName: string | null;
   isDirty: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  lastSavedAt: number | null;
+  saveError: string | null;
+  isLoading: boolean;
 }
 
 const undoStack = new UndoStack();
@@ -86,14 +96,17 @@ export function useAppState() {
     filePath: null,
     fileName: null,
     isDirty: false,
+    canUndo: false,
+    canRedo: false,
+    lastSavedAt: null,
+    saveError: null,
+    isLoading: false,
   });
 
   const updateData = useCallback((newData: string[][]) => {
     setState((prev: AppState) => ({
       ...prev,
-      tabs: prev.tabs.map((tab) => (
-        tab.id === prev.activeTabId ? { ...tab, data: newData } : tab
-      )),
+      tabs: prev.tabs.map((tab) => (tab.id === prev.activeTabId ? { ...tab, data: newData } : tab)),
       data: newData,
       isDirty: true,
     }));
@@ -118,29 +131,42 @@ export function useAppState() {
     }));
   }, []);
 
-  const setWorkbook = useCallback((newTabs: Array<{ name: string; data: string[][]; formats?: CellFormatMap; columnWidths?: number[] }>, filePath?: string, fileName?: string) => {
-    undoStack.clear();
+  const setWorkbook = useCallback(
+    (
+      newTabs: Array<{
+        name: string;
+        data: string[][];
+        formats?: CellFormatMap;
+        columnWidths?: number[];
+      }>,
+      filePath?: string,
+      fileName?: string,
+    ) => {
+      undoStack.clear();
 
-    const tabs = (newTabs.length ? newTabs : [{ name: 'Sheet1', data: createEmptyGrid() }]).map((tab, index) =>
-      createSheetTab(tab.name || `Sheet${index + 1}`, tab.data, tab.formats, tab.columnWidths)
-    );
-    const activeTab = tabs[0];
+      const tabs = (newTabs.length ? newTabs : [{ name: 'Sheet1', data: createEmptyGrid() }]).map(
+        (tab, index) =>
+          createSheetTab(tab.name || `Sheet${index + 1}`, tab.data, tab.formats, tab.columnWidths),
+      );
+      const activeTab = tabs[0];
 
-    setState((prev: AppState) => ({
-      ...prev,
-      tabs,
-      activeTabId: activeTab.id,
-      data: activeTab.data,
-      cellFormats: activeTab.formats,
-      columnWidths: activeTab.columnWidths,
-      filePath: filePath || prev.filePath,
-      fileName: fileName || prev.fileName,
-      selectedCell: null,
-      selectedRange: null,
-      editingCell: null,
-      isDirty: false,
-    }));
-  }, []);
+      setState((prev: AppState) => ({
+        ...prev,
+        tabs,
+        activeTabId: activeTab.id,
+        data: activeTab.data,
+        cellFormats: activeTab.formats,
+        columnWidths: activeTab.columnWidths,
+        filePath: filePath || prev.filePath,
+        fileName: fileName || prev.fileName,
+        selectedCell: null,
+        selectedRange: null,
+        editingCell: null,
+        isDirty: false,
+      }));
+    },
+    [],
+  );
 
   const setCellValue = useCallback(
     (row: number, col: number, value: string) => {
@@ -150,7 +176,7 @@ export function useAppState() {
       const command = createCellEditCommand(state.data, row, col, value, oldValue, updateData);
       undoStack.execute(command);
     },
-    [state.data, updateData]
+    [state.data, updateData],
   );
 
   const pasteData = useCallback(
@@ -166,14 +192,14 @@ export function useAppState() {
         newData = expandGrid(
           state.data,
           Math.max(neededRows, currentRows),
-          Math.max(neededCols, currentCols)
+          Math.max(neededCols, currentCols),
         );
       }
 
       const command = createPasteCommand(newData, startRow, startCol, pastedData, updateData);
       undoStack.execute(command);
     },
-    [state.data, updateData]
+    [state.data, updateData],
   );
 
   const insertRow = useCallback(
@@ -181,7 +207,7 @@ export function useAppState() {
       const command = createInsertRowCommand(state.data, rowIndex, updateData);
       undoStack.execute(command);
     },
-    [state.data, updateData]
+    [state.data, updateData],
   );
 
   const deleteRow = useCallback(
@@ -190,7 +216,7 @@ export function useAppState() {
       const command = createDeleteRowCommand(state.data, rowIndex, updateData);
       undoStack.execute(command);
     },
-    [state.data, updateData]
+    [state.data, updateData],
   );
 
   const insertColumn = useCallback(
@@ -198,7 +224,7 @@ export function useAppState() {
       const command = createInsertColumnCommand(state.data, colIndex, updateData);
       undoStack.execute(command);
     },
-    [state.data, updateData]
+    [state.data, updateData],
   );
 
   const deleteColumn = useCallback(
@@ -207,18 +233,24 @@ export function useAppState() {
       const command = createDeleteColumnCommand(state.data, colIndex, updateData);
       undoStack.execute(command);
     },
-    [state.data, updateData]
+    [state.data, updateData],
   );
 
   const moveRow = useCallback(
     (fromIndex: number, toIndex: number) => {
       if (fromIndex === toIndex) return;
-      if (fromIndex < 0 || toIndex < 0 || fromIndex >= state.data.length || toIndex >= state.data.length) return;
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= state.data.length ||
+        toIndex >= state.data.length
+      )
+        return;
 
       const command = createMoveRowCommand(state.data, fromIndex, toIndex, updateData);
       undoStack.execute(command);
     },
-    [state.data, updateData]
+    [state.data, updateData],
   );
 
   const moveColumn = useCallback(
@@ -229,9 +261,44 @@ export function useAppState() {
 
       const command = createMoveColumnCommand(state.data, fromIndex, toIndex, updateData);
       undoStack.execute(command);
+
+      // Also reorder column widths to match
+      setState((prev: AppState) => {
+        const widths = [...prev.columnWidths];
+        if (widths.length > 0) {
+          const w = widths.splice(fromIndex, 1)[0];
+          const insertAt = fromIndex < toIndex ? toIndex - 1 : toIndex;
+          widths.splice(insertAt, 0, w);
+        }
+        return {
+          ...prev,
+          columnWidths: widths,
+          tabs: prev.tabs.map((tab) =>
+            tab.id === prev.activeTabId ? { ...tab, columnWidths: widths } : tab,
+          ),
+        };
+      });
     },
-    [state.data, updateData]
+    [state.data, updateData],
   );
+
+  // Wire undo stack notifications to React state (intentional effect→state sync)
+  useEffect(() => {
+    undoStack.setOnChange(() => {
+      setState((prev: AppState) => ({
+        ...prev,
+        canUndo: undoStack.canUndo(),
+        canRedo: undoStack.canRedo(),
+      }));
+    });
+    // Initial sync
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState((prev: AppState) => ({
+      ...prev,
+      canUndo: false,
+      canRedo: false,
+    }));
+  }, []);
 
   const undo = useCallback(() => {
     undoStack.undo();
@@ -240,9 +307,6 @@ export function useAppState() {
   const redo = useCallback(() => {
     undoStack.redo();
   }, []);
-
-  const canUndo = useCallback(() => undoStack.canUndo(), []);
-  const canRedo = useCallback(() => undoStack.canRedo(), []);
 
   const setSelectedCell = useCallback((cell: CellCoord | null) => {
     setState((prev: AppState) => ({
@@ -283,6 +347,11 @@ export function useAppState() {
       filePath: null,
       fileName: null,
       isDirty: false,
+      canUndo: false,
+      canRedo: false,
+      lastSavedAt: null,
+      saveError: null,
+      isLoading: false,
     });
   }, []);
 
@@ -292,7 +361,17 @@ export function useAppState() {
       filePath: filePath || prev.filePath,
       fileName: fileName || prev.fileName,
       isDirty: false,
+      lastSavedAt: Date.now(),
+      saveError: null,
     }));
+  }, []);
+
+  const setSaveError = useCallback((error: string | null) => {
+    setState((prev: AppState) => ({ ...prev, saveError: error }));
+  }, []);
+
+  const setLoading = useCallback((loading: boolean) => {
+    setState((prev: AppState) => ({ ...prev, isLoading: loading }));
   }, []);
 
   const addTab = useCallback(() => {
@@ -370,7 +449,13 @@ export function useAppState() {
             [formatType]: nextValue,
           };
 
-          if (!updated.bold && !updated.italic && !updated.underline && !updated.textColor && !updated.backgroundColor) {
+          if (
+            !updated.bold &&
+            !updated.italic &&
+            !updated.underline &&
+            !updated.textColor &&
+            !updated.backgroundColor
+          ) {
             delete nextFormats[key];
           } else {
             nextFormats[key] = updated;
@@ -380,51 +465,60 @@ export function useAppState() {
 
       return {
         ...prev,
-        tabs: prev.tabs.map((tab) => (
-          tab.id === prev.activeTabId ? { ...tab, formats: nextFormats } : tab
-        )),
+        tabs: prev.tabs.map((tab) =>
+          tab.id === prev.activeTabId ? { ...tab, formats: nextFormats } : tab,
+        ),
         cellFormats: nextFormats,
         isDirty: true,
       };
     });
   }, []);
 
-  const setFormatColor = useCallback((range: CellRange | null, colorType: CellColorType, colorValue: string) => {
-    if (!range) return;
+  const setFormatColor = useCallback(
+    (range: CellRange | null, colorType: CellColorType, colorValue: string) => {
+      if (!range) return;
 
-    const bounds = getRangeBounds(range);
-    const normalizedColor = colorValue.trim();
+      const bounds = getRangeBounds(range);
+      const normalizedColor = colorValue.trim();
 
-    setState((prev: AppState) => {
-      const nextFormats: CellFormatMap = { ...prev.cellFormats };
+      setState((prev: AppState) => {
+        const nextFormats: CellFormatMap = { ...prev.cellFormats };
 
-      for (let row = bounds.minRow; row <= bounds.maxRow; row++) {
-        for (let col = bounds.minCol; col <= bounds.maxCol; col++) {
-          const key = getFormatKey(row, col);
-          const current = nextFormats[key] || {};
-          const updated = {
-            ...current,
-            [colorType]: normalizedColor || undefined,
-          };
+        for (let row = bounds.minRow; row <= bounds.maxRow; row++) {
+          for (let col = bounds.minCol; col <= bounds.maxCol; col++) {
+            const key = getFormatKey(row, col);
+            const current = nextFormats[key] || {};
+            const updated = {
+              ...current,
+              [colorType]: normalizedColor || undefined,
+            };
 
-          if (!updated.bold && !updated.italic && !updated.underline && !updated.textColor && !updated.backgroundColor) {
-            delete nextFormats[key];
-          } else {
-            nextFormats[key] = updated;
+            if (
+              !updated.bold &&
+              !updated.italic &&
+              !updated.underline &&
+              !updated.textColor &&
+              !updated.backgroundColor
+            ) {
+              delete nextFormats[key];
+            } else {
+              nextFormats[key] = updated;
+            }
           }
         }
-      }
 
-      return {
-        ...prev,
-        tabs: prev.tabs.map((tab) => (
-          tab.id === prev.activeTabId ? { ...tab, formats: nextFormats } : tab
-        )),
-        cellFormats: nextFormats,
-        isDirty: true,
-      };
-    });
-  }, []);
+        return {
+          ...prev,
+          tabs: prev.tabs.map((tab) =>
+            tab.id === prev.activeTabId ? { ...tab, formats: nextFormats } : tab,
+          ),
+          cellFormats: nextFormats,
+          isDirty: true,
+        };
+      });
+    },
+    [],
+  );
 
   const renameTab = useCallback((tabId: string, tabName: string) => {
     const trimmedName = tabName.trim();
@@ -436,9 +530,7 @@ export function useAppState() {
 
       return {
         ...prev,
-        tabs: prev.tabs.map((tab) => (
-          tab.id === tabId ? { ...tab, name: nextName } : tab
-        )),
+        tabs: prev.tabs.map((tab) => (tab.id === tabId ? { ...tab, name: nextName } : tab)),
         isDirty: true,
       };
     });
@@ -455,9 +547,9 @@ export function useAppState() {
 
       return {
         ...prev,
-        tabs: prev.tabs.map((tab) => (
-          tab.id === prev.activeTabId ? { ...tab, columnWidths: nextColumnWidths } : tab
-        )),
+        tabs: prev.tabs.map((tab) =>
+          tab.id === prev.activeTabId ? { ...tab, columnWidths: nextColumnWidths } : tab,
+        ),
         columnWidths: nextColumnWidths,
         isDirty: true,
       };
@@ -507,13 +599,13 @@ export function useAppState() {
     moveColumn,
     undo,
     redo,
-    canUndo,
-    canRedo,
     setSelectedCell,
     setSelectedRange,
     setEditingCell,
     newFile,
     markSaved,
+    setSaveError,
+    setLoading,
     addTab,
     switchTab,
     renameTab,
