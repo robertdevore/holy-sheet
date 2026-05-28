@@ -1,4 +1,15 @@
-import { app, BrowserWindow, Menu, ipcMain, dialog, Event, IpcMainInvokeEvent, MenuItemConstructorOptions, WebContents, shell } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  ipcMain,
+  dialog,
+  Event,
+  IpcMainInvokeEvent,
+  MenuItemConstructorOptions,
+  WebContents,
+  shell,
+} from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -10,7 +21,9 @@ const isMac = process.platform === 'darwin';
 // In other packaged builds, use the directory containing the executable.
 const executablePath = app.getPath('exe');
 const executableDir = path.dirname(executablePath);
-const appBundlePath = isMac ? path.dirname(path.dirname(path.dirname(executablePath))) : executableDir;
+const appBundlePath = isMac
+  ? path.dirname(path.dirname(path.dirname(executablePath)))
+  : executableDir;
 const appParentDir = isMac ? path.dirname(appBundlePath) : executableDir;
 const appPath = isDev ? path.join(__dirname, '..') : appParentDir;
 const portableDir = path.join(appPath, '.holysheet');
@@ -60,7 +73,7 @@ function setupPortablePaths() {
 function clearRecentDocuments() {
   try {
     app.clearRecentDocuments();
-  } catch (error) {
+  } catch {
     // Silently fail - best effort only
   }
 }
@@ -121,6 +134,23 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+O',
           click: () => mainWindow?.webContents.send('menu:open'),
         },
+        {
+          label: 'Open With Delimiter',
+          submenu: [
+            {
+              label: 'Comma (,)',
+              click: () => mainWindow?.webContents.send('menu:openWithDelimiter', ','),
+            },
+            {
+              label: 'Semicolon (;)',
+              click: () => mainWindow?.webContents.send('menu:openWithDelimiter', ';'),
+            },
+            {
+              label: 'Tab',
+              click: () => mainWindow?.webContents.send('menu:openWithDelimiter', '\t'),
+            },
+          ],
+        },
         { type: 'separator' },
         {
           label: 'Save',
@@ -131,6 +161,10 @@ function createMenu() {
           label: 'Save As...',
           accelerator: 'CmdOrCtrl+Shift+S',
           click: () => mainWindow?.webContents.send('menu:saveAs'),
+        },
+        {
+          label: 'Export as CSV...',
+          click: () => mainWindow?.webContents.send('menu:exportCsv'),
         },
         { type: 'separator' },
         {
@@ -215,16 +249,51 @@ function setupIpcHandlers() {
     };
   });
 
-  // Save CSV file
-  ipcMain.handle('save-csv', async (_event: IpcMainInvokeEvent, filePath: string, content: string) => {
-    try {
-      fs.writeFileSync(filePath, content, 'utf-8');
+  // Open CSV file with explicit delimiter
+  ipcMain.handle(
+    'open-csv-with-delimiter',
+    async (_event: IpcMainInvokeEvent, delimiter: string) => {
+      if (!mainWindow) return null;
+
+      const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile'],
+        filters: [
+          { name: 'CSV Files', extensions: ['csv'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+
+      const filePath = result.filePaths[0];
+      const content = fs.readFileSync(filePath, 'utf-8');
+
       clearRecentDocuments();
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: (error as Error).message };
-    }
-  });
+
+      return {
+        path: filePath,
+        content: content,
+        name: path.basename(filePath),
+        delimiter: delimiter,
+      };
+    },
+  );
+
+  // Save CSV file
+  ipcMain.handle(
+    'save-csv',
+    async (_event: IpcMainInvokeEvent, filePath: string, content: string) => {
+      try {
+        fs.writeFileSync(filePath, content, 'utf-8');
+        clearRecentDocuments();
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    },
+  );
 
   // Save CSV file as (new location)
   ipcMain.handle('save-csv-as', async (_event: IpcMainInvokeEvent, content: string) => {
@@ -254,6 +323,38 @@ function setupIpcHandlers() {
       return { success: false, error: (error as Error).message };
     }
   });
+
+  // Export active tab as plain CSV (strip workbook metadata)
+  ipcMain.handle(
+    'export-csv',
+    async (_event: IpcMainInvokeEvent, content: string, suggestedName?: string) => {
+      if (!mainWindow) return null;
+
+      const result = await dialog.showSaveDialog(mainWindow, {
+        filters: [
+          { name: 'CSV Files', extensions: ['csv'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        defaultPath: suggestedName || 'export.csv',
+      });
+
+      if (result.canceled || !result.filePath) {
+        return null;
+      }
+
+      try {
+        fs.writeFileSync(result.filePath, content, 'utf-8');
+        clearRecentDocuments();
+        return {
+          success: true,
+          path: result.filePath,
+          name: path.basename(result.filePath),
+        };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    },
+  );
 
   // Confirm unsaved changes
   ipcMain.handle('confirm-unsaved-changes', async () => {
@@ -307,7 +408,9 @@ function setupIpcHandlers() {
 
     const url = /^https?:\/\//i.test(input)
       ? input
-      : (/^www\./i.test(input) ? `https://${input}` : '');
+      : /^www\./i.test(input)
+        ? `https://${input}`
+        : '';
 
     if (!url || !/^https?:\/\//i.test(url)) {
       return { success: false, error: 'Invalid URL' };
@@ -331,7 +434,7 @@ app.whenReady().then(() => {
       'HolySheet must be run from within your encrypted folder.\n\n' +
         'Please move this application into your encrypted/mounted folder and create a file named:\n' +
         'HOLYSHEET_PORTABLE.txt\n\n' +
-        'in the same directory as the application.'
+        'in the same directory as the application.',
     );
     app.quit();
     return;

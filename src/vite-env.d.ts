@@ -3,16 +3,20 @@
 interface Window {
   electronAPI: {
     openCsv: () => Promise<{ path: string; content: string; name: string } | null>;
-    saveCsv: (
-      filePath: string,
-      content: string
-    ) => Promise<{ success: boolean; error?: string }>;
+    openCsvWithDelimiter: (
+      delimiter: string,
+    ) => Promise<{ path: string; content: string; name: string; delimiter: string } | null>;
+    saveCsv: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>;
     saveCsvAs: (content: string) => Promise<{
       success: boolean;
       path?: string;
       name?: string;
       error?: string;
     } | null>;
+    exportCsv: (
+      content: string,
+      suggestedName?: string,
+    ) => Promise<{ success: boolean; path?: string; name?: string; error?: string } | null>;
     confirmUnsavedChanges: () => Promise<'save' | 'dontSave' | 'cancel'>;
     panicClose: () => Promise<void>;
     getPortableInfo: () => Promise<{
@@ -28,5 +32,7 @@ interface Window {
     onMenuSaveAs: (callback: () => void) => () => void;
     onMenuUndo: (callback: () => void) => () => void;
     onMenuRedo: (callback: () => void) => () => void;
+    onMenuOpenWithDelimiter: (callback: (delimiter: string) => void) => () => void;
+    onMenuExportCsv: (callback: () => void) => () => void;
   };
 }

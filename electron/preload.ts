@@ -5,9 +5,13 @@ import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld('electronAPI', {
   // File operations
   openCsv: () => ipcRenderer.invoke('open-csv'),
+  openCsvWithDelimiter: (delimiter: string) =>
+    ipcRenderer.invoke('open-csv-with-delimiter', delimiter),
   saveCsv: (filePath: string, content: string) =>
     ipcRenderer.invoke('save-csv', filePath, content),
   saveCsvAs: (content: string) => ipcRenderer.invoke('save-csv-as', content),
+  exportCsv: (content: string, suggestedName?: string) =>
+    ipcRenderer.invoke('export-csv', content, suggestedName),
 
   // Dialogs
   confirmUnsavedChanges: () => ipcRenderer.invoke('confirm-unsaved-changes'),
@@ -43,21 +47,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('menu:redo', callback);
     return () => ipcRenderer.removeListener('menu:redo', callback);
   },
+  onMenuOpenWithDelimiter: (callback: (delimiter: string) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, delimiter: string) => callback(delimiter);
+    ipcRenderer.on('menu:openWithDelimiter', handler);
+    return () => ipcRenderer.removeListener('menu:openWithDelimiter', handler);
+  },
+  onMenuExportCsv: (callback: () => void) => {
+    ipcRenderer.on('menu:exportCsv', callback);
+    return () => ipcRenderer.removeListener('menu:exportCsv', callback);
+  },
 });
 
 // Type definitions for the exposed API
 export interface ElectronAPI {
   openCsv: () => Promise<{ path: string; content: string; name: string } | null>;
-  saveCsv: (
-    filePath: string,
-    content: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  openCsvWithDelimiter: (
+    delimiter: string,
+  ) => Promise<{ path: string; content: string; name: string; delimiter: string } | null>;
+  saveCsv: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>;
   saveCsvAs: (content: string) => Promise<{
     success: boolean;
     path?: string;
     name?: string;
     error?: string;
   } | null>;
+  exportCsv: (
+    content: string,
+    suggestedName?: string,
+  ) => Promise<{ success: boolean; path?: string; name?: string; error?: string } | null>;
   confirmUnsavedChanges: () => Promise<'save' | 'dontSave' | 'cancel'>;
   panicClose: () => Promise<void>;
   getPortableInfo: () => Promise<{
@@ -73,6 +90,8 @@ export interface ElectronAPI {
   onMenuSaveAs: (callback: () => void) => () => void;
   onMenuUndo: (callback: () => void) => () => void;
   onMenuRedo: (callback: () => void) => () => void;
+  onMenuOpenWithDelimiter: (callback: (delimiter: string) => void) => () => void;
+  onMenuExportCsv: (callback: () => void) => () => void;
 }
 
 declare global {
