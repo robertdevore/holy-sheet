@@ -1,10 +1,26 @@
-import React, { useRef, useCallback, useEffect, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import { VariableSizeGrid as VirtualGrid } from 'react-window';
-import { CellCoord, CellRange, colIndexToLetter, getRangeBounds, isCellInRange } from '../utils/selection';
+import { CellRenderer } from './CellRenderer';
+import {
+  CellCoord,
+  CellRange,
+  colIndexToLetter,
+  getRangeBounds,
+  isCellInRange,
+} from '../utils/selection';
 
 interface GridProps {
   data: string[][];
-  cellFormats: Record<string, { bold?: boolean; italic?: boolean; underline?: boolean; textColor?: string; backgroundColor?: string }>;
+  cellFormats: Record<
+    string,
+    {
+      bold?: boolean;
+      italic?: boolean;
+      underline?: boolean;
+      textColor?: string;
+      backgroundColor?: string;
+    }
+  >;
   columnWidths: number[];
   selectedCell: CellCoord | null;
   selectedRange: CellRange | null;
@@ -63,15 +79,20 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
   const [dragStart, setDragStart] = useState<CellCoord | null>(null);
   const [gridSize, setGridSize] = useState({ width: 1000, height: 600 });
   const [columnWidths, setColumnWidths] = useState<number[]>([]);
-  const [scrollLeft, setScrollLeft] = useState(0);
-  const [scrollTop, setScrollTop] = useState(0);
+  const colHeadersRef = useRef<HTMLDivElement>(null);
+  const rowHeadersRef = useRef<HTMLDivElement>(null);
   const [resizingColumn, setResizingColumn] = useState<number | null>(null);
   const prevEditingCell = useRef<CellCoord | null>(null);
   const pending_initial_edit_value = useRef<string | null>(null);
   const resize_start_x = useRef(0);
   const resize_start_width = useRef(CELL_WIDTH);
   const suppressHeaderClick = useRef(false);
-  const headerDragOrigin = useRef<{ type: 'row' | 'col'; index: number; x: number; y: number } | null>(null);
+  const headerDragOrigin = useRef<{
+    type: 'row' | 'col';
+    index: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const onInsertRowRef = useRef(onInsertRow);
   const columnWidthsRef = useRef<number[]>([]);
   const onCellClickRef = useRef(onCellClick);
@@ -90,10 +111,13 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
     columnWidthsRef.current = columnWidths;
   }, [columnWidths]);
 
-  const commitEdit = useCallback((row: number, col: number, value: string) => {
-    onCellEdit(row, col, value);
-    onEditComplete();
-  }, [onCellEdit, onEditComplete]);
+  const commitEdit = useCallback(
+    (row: number, col: number, value: string) => {
+      onCellEdit(row, col, value);
+      onEditComplete();
+    },
+    [onCellEdit, onEditComplete],
+  );
 
   const focusAndSelectCell = useCallback((row: number, col: number) => {
     if (gridRef.current && gridRef.current.scrollToItem) {
@@ -107,24 +131,48 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
     });
   }, []);
 
+  // Sync local column widths from persisted props (intentional prop→state sync)
   useEffect(() => {
     const next = (persistedColumnWidths || []).slice(0, colCount).map((width) => {
       const numeric_width = Number(width);
       return Number.isFinite(numeric_width) && numeric_width > 0 ? numeric_width : 0;
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setColumnWidths(next);
   }, [persistedColumnWidths, colCount]);
 
-  const getColumnWidth = useCallback((index: number) => {
-    return columnWidths[index] || CELL_WIDTH;
-  }, [columnWidths]);
+  const getColumnWidth = useCallback(
+    (index: number) => {
+      return columnWidths[index] || CELL_WIDTH;
+    },
+    [columnWidths],
+  );
 
-  const totalColumnWidth = Array.from({ length: colCount }).reduce((total: number, _value, index: number) => {
-    return total + getColumnWidth(index);
-  }, 0);
-  const selectionBounds = selectedRange ? getRangeBounds(selectedRange) : null;
-  const isFullRowSelection = !!selectionBounds && selectionBounds.minCol === 0 && selectionBounds.maxCol === Math.max(0, colCount - 1);
-  const isFullColSelection = !!selectionBounds && selectionBounds.minRow === 0 && selectionBounds.maxRow === Math.max(0, rowCount - 1);
+  const totalColumnWidth = useMemo(
+    () =>
+      Array.from({ length: colCount }).reduce((total: number, _value, index: number) => {
+        return total + getColumnWidth(index);
+      }, 0),
+    [colCount, getColumnWidth],
+  );
+  const selectionBounds = useMemo(
+    () => (selectedRange ? getRangeBounds(selectedRange) : null),
+    [selectedRange],
+  );
+  const isFullRowSelection = useMemo(
+    () =>
+      !!selectionBounds &&
+      selectionBounds.minCol === 0 &&
+      selectionBounds.maxCol === Math.max(0, colCount - 1),
+    [selectionBounds, colCount],
+  );
+  const isFullColSelection = useMemo(
+    () =>
+      !!selectionBounds &&
+      selectionBounds.minRow === 0 &&
+      selectionBounds.maxRow === Math.max(0, rowCount - 1),
+    [selectionBounds, rowCount],
+  );
 
   // Update grid size on window resize
   useEffect(() => {
@@ -159,14 +207,16 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
       return;
     }
 
-    const isNewEdit = !prevEditingCell.current ||
+    const isNewEdit =
+      !prevEditingCell.current ||
       prevEditingCell.current.row !== editingCell.row ||
       prevEditingCell.current.col !== editingCell.col;
     const hasPendingInitialValue = null !== pending_initial_edit_value.current;
 
     if (isNewEdit) {
       const value = data[editingCell.row]?.[editingCell.col] || '';
-      const initial_value = null !== pending_initial_edit_value.current ? pending_initial_edit_value.current : value;
+      const initial_value =
+        null !== pending_initial_edit_value.current ? pending_initial_edit_value.current : value;
       setEditValue(initial_value);
       pending_initial_edit_value.current = null;
     }
@@ -213,11 +263,10 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && (
-        'INPUT' === target.tagName ||
-        'TEXTAREA' === target.tagName ||
-        target.isContentEditable
-      )) {
+      if (
+        target &&
+        ('INPUT' === target.tagName || 'TEXTAREA' === target.tagName || target.isContentEditable)
+      ) {
         return;
       }
 
@@ -239,7 +288,9 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
           break;
         case 'ArrowDown':
           e.preventDefault();
-          newRow = is_modifier_pressed ? Math.max(0, rowCount - 1) : Math.min(rowCount - 1, selectedCell.row + 1);
+          newRow = is_modifier_pressed
+            ? Math.max(0, rowCount - 1)
+            : Math.min(rowCount - 1, selectedCell.row + 1);
           break;
         case 'ArrowLeft':
           e.preventDefault();
@@ -247,7 +298,9 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
           break;
         case 'ArrowRight':
           e.preventDefault();
-          newCol = is_modifier_pressed ? Math.max(0, colCount - 1) : Math.min(colCount - 1, selectedCell.col + 1);
+          newCol = is_modifier_pressed
+            ? Math.max(0, colCount - 1)
+            : Math.min(colCount - 1, selectedCell.col + 1);
           break;
         case 'Home':
           e.preventDefault();
@@ -256,6 +309,14 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
         case 'End':
           e.preventDefault();
           newCol = Math.max(0, colCount - 1);
+          break;
+        case 'PageUp':
+          e.preventDefault();
+          newRow = Math.max(0, selectedCell.row - 20);
+          break;
+        case 'PageDown':
+          e.preventDefault();
+          newRow = Math.min(rowCount - 1, selectedCell.row + 20);
           break;
         case 'Enter':
           e.preventDefault();
@@ -290,6 +351,15 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
           return;
       }
 
+      // Shift+Arrow: extend selection range from original anchor
+      if (e.shiftKey && !is_modifier_pressed) {
+        const anchor = selectedRange ? selectedRange.start : selectedCell;
+        if (newRow !== selectedCell.row || newCol !== selectedCell.col) {
+          onRangeSelect({ start: anchor, end: { row: newRow, col: newCol } });
+        }
+        return;
+      }
+
       if (newRow !== selectedCell.row || newCol !== selectedCell.col) {
         onCellClick(newRow, newCol);
       }
@@ -297,29 +367,54 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedCell, editingCell, editValue, selectedRange, rowCount, colCount, onCellClick, onCellDoubleClick, onCellEdit, onEditComplete, onEditCancel]);
+  }, [
+    selectedCell,
+    editingCell,
+    editValue,
+    selectedRange,
+    rowCount,
+    colCount,
+    onCellClick,
+    onCellDoubleClick,
+    onCellEdit,
+    onEditComplete,
+    onEditCancel,
+    onRangeSelect,
+  ]);
 
-  const handleMouseDown = useCallback((row: number, col: number, e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Only left click
+  const handleMouseDown = useCallback(
+    (row: number, col: number, e: React.MouseEvent) => {
+      if (e.button !== 0) return; // Only left click
 
-    if (editingCell) {
-      const is_same_cell = editingCell.row === row && editingCell.col === col;
-      if (!is_same_cell) {
-        onCellEdit(editingCell.row, editingCell.col, editValue);
-        onEditComplete();
+      if (editingCell) {
+        const is_same_cell = editingCell.row === row && editingCell.col === col;
+        if (!is_same_cell) {
+          onCellEdit(editingCell.row, editingCell.col, editValue);
+          onEditComplete();
+        }
       }
-    }
 
-    setIsDragging(true);
-    setDragStart({ row, col });
-    onCellClick(row, col);
-  }, [editingCell, editValue, onCellClick, onCellEdit, onEditComplete]);
+      // Shift+Click: extend selection from active cell to clicked cell
+      if (e.shiftKey && selectedCell) {
+        onRangeSelect({ start: selectedCell, end: { row, col } });
+        return;
+      }
 
-  const handleMouseEnter = useCallback((row: number, col: number) => {
-    if (isDragging && dragStart) {
-      onRangeSelect({ start: dragStart, end: { row, col } });
-    }
-  }, [isDragging, dragStart, onRangeSelect]);
+      setIsDragging(true);
+      setDragStart({ row, col });
+      onCellClick(row, col);
+    },
+    [editingCell, editValue, onCellClick, onCellEdit, onEditComplete, selectedCell, onRangeSelect],
+  );
+
+  const handleMouseEnter = useCallback(
+    (row: number, col: number) => {
+      if (isDragging && dragStart) {
+        onRangeSelect({ start: dragStart, end: { row, col } });
+      }
+    },
+    [isDragging, dragStart, onRangeSelect],
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -331,13 +426,16 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
     return () => window.removeEventListener('mouseup', handleMouseUp);
   }, [handleMouseUp]);
 
-  const handleColumnResizeStart = useCallback((col: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setResizingColumn(col);
-    resize_start_x.current = e.clientX;
-    resize_start_width.current = getColumnWidth(col);
-  }, [getColumnWidth]);
+  const handleColumnResizeStart = useCallback(
+    (col: number, e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setResizingColumn(col);
+      resize_start_x.current = e.clientX;
+      resize_start_width.current = getColumnWidth(col);
+    },
+    [getColumnWidth],
+  );
 
   useEffect(() => {
     if (null === resizingColumn) return;
@@ -372,144 +470,117 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
     };
   }, [resizingColumn, onColumnWidthsChange]);
 
-  const handleGridScroll = useCallback(({ scrollLeft, scrollTop }: { scrollLeft: number; scrollTop: number }) => {
-    setScrollLeft(scrollLeft);
-    setScrollTop(scrollTop);
-  }, []);
+  const handleGridScroll = useCallback(
+    ({ scrollLeft: sl, scrollTop: st }: { scrollLeft: number; scrollTop: number }) => {
+      // Update DOM directly for headers to avoid React re-renders on every scroll tick
+      if (colHeadersRef.current) {
+        colHeadersRef.current.style.transform = `translateX(-${sl}px)`;
+      }
+      if (rowHeadersRef.current) {
+        rowHeadersRef.current.style.transform = `translateY(-${st}px)`;
+      }
+    },
+    [],
+  );
 
-  const Cell = ({ columnIndex, rowIndex, style }: any) => {
-    const is_single_cell_selection = !!selectedRange &&
+  const Cell = ({ columnIndex, rowIndex, style }: { columnIndex: number; rowIndex: number; style: React.CSSProperties }) => {
+    const isSingle =
+      !!selectedRange &&
       selectedRange.start.row === selectedRange.end.row &&
       selectedRange.start.col === selectedRange.end.col;
-    const isSelected = is_single_cell_selection && selectedCell?.row === rowIndex && selectedCell?.col === columnIndex;
-    const isInRange = selectedRange ? isCellInRange({ row: rowIndex, col: columnIndex }, selectedRange) : false;
-    const rangeBounds = selectedRange ? getRangeBounds(selectedRange) : null;
-    const isRangeTop = !!rangeBounds && isInRange && rowIndex === rangeBounds.minRow;
-    const isRangeBottom = !!rangeBounds && isInRange && rowIndex === rangeBounds.maxRow;
-    const isRangeLeft = !!rangeBounds && isInRange && columnIndex === rangeBounds.minCol;
-    const isRangeRight = !!rangeBounds && isInRange && columnIndex === rangeBounds.maxCol;
-    const isEditing = editingCell?.row === rowIndex && editingCell?.col === columnIndex;
-    const value = data[rowIndex]?.[columnIndex] || '';
-    const formatKey = `${rowIndex}:${columnIndex}`;
-    const format = cellFormats[formatKey] || {};
-
-    const textStyle: React.CSSProperties = {
-      fontWeight: format.bold ? 700 : undefined,
-      fontStyle: format.italic ? 'italic' : undefined,
-      textDecoration: format.underline ? 'underline' : undefined,
-      color: format.textColor || undefined,
-    };
-
-    const rangeOutlineShadows: string[] = [];
-    if (isInRange && !is_single_cell_selection) {
-      if (isRangeTop) rangeOutlineShadows.push('inset 0 2px 0 var(--accent)');
-      if (isRangeBottom) rangeOutlineShadows.push('inset 0 -2px 0 var(--accent)');
-      if (isRangeLeft) rangeOutlineShadows.push('inset 2px 0 0 var(--accent)');
-      if (isRangeRight) rangeOutlineShadows.push('inset -2px 0 0 var(--accent)');
-    }
-
-    const cellStyle = rangeOutlineShadows.length > 0
-      ? { ...style, boxShadow: rangeOutlineShadows.join(', '), backgroundColor: format.backgroundColor || undefined }
-      : { ...style, backgroundColor: format.backgroundColor || undefined };
+    const isSel =
+      isSingle &&
+      selectedCell?.row === rowIndex &&
+      selectedCell?.col === columnIndex;
+    const inRange = selectedRange
+      ? isCellInRange({ row: rowIndex, col: columnIndex }, selectedRange)
+      : false;
+    const rb = selectionBounds;
+    const isTop = !!rb && inRange && rowIndex === rb.minRow;
+    const isBottom = !!rb && inRange && rowIndex === rb.maxRow;
+    const isLeft = !!rb && inRange && columnIndex === rb.minCol;
+    const isRight = !!rb && inRange && columnIndex === rb.maxCol;
+    const isEdit = editingCell?.row === rowIndex && editingCell?.col === columnIndex;
+    const val = data[rowIndex]?.[columnIndex] || '';
+    const fmt = cellFormats[`${rowIndex}:${columnIndex}`] || {};
 
     return (
-      <div
-        style={cellStyle}
-        className={`cell ${isSelected ? 'selected' : ''} ${isInRange ? 'in-range' : ''}`}
-        onClick={() => onCellClick(rowIndex, columnIndex)}
-        onDoubleClick={() => onCellDoubleClick(rowIndex, columnIndex)}
-        onMouseDown={(e: React.MouseEvent) => handleMouseDown(rowIndex, columnIndex, e)}
-        onMouseEnter={() => handleMouseEnter(rowIndex, columnIndex)}
-      >
-        {isEditing ? (
-          <input
-            ref={editInputRef}
-            type="text"
-            value={editValue}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value)}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-              e.stopPropagation();
-
-              const is_modifier_pressed = e.metaKey || e.ctrlKey;
-              if (is_modifier_pressed && 'a' === e.key.toLowerCase()) {
-                e.preventDefault();
-                const input = e.currentTarget;
-                input.setSelectionRange(0, input.value.length);
-                return;
-              }
-
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                commitEdit(rowIndex, columnIndex, editValue);
-
-                if (!e.shiftKey && rowIndex === rowCount - 1) {
-                  window.setTimeout(() => {
-                    onInsertRowRef.current(rowCount);
-                    focusAndSelectCell(rowIndex + 1, columnIndex);
-                  }, 0);
-                  return;
-                }
-
-                const nextRow = e.shiftKey ? Math.max(0, rowIndex - 1) : rowIndex + 1;
-
-                focusAndSelectCell(nextRow, columnIndex);
-              } else if (e.key === 'Escape') {
-                e.preventDefault();
-                onEditCancel();
-              } else if (e.key === 'Tab') {
-                e.preventDefault();
-                commitEdit(rowIndex, columnIndex, editValue);
-                const nextCol = e.shiftKey
-                  ? Math.max(0, columnIndex - 1)
-                  : Math.min(colCount - 1, columnIndex + 1);
-                onCellClick(rowIndex, nextCol);
-              }
-            }}
-            onBlur={() => {
-              commitEdit(rowIndex, columnIndex, editValue);
-            }}
-            onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            onDoubleClick={(e: React.MouseEvent) => e.stopPropagation()}
-            className="cell-edit-input"
-            style={textStyle}
-          />
-        ) : (/^(https?:\/\/|www\.)\S+$/i.test(value.trim()) ? (
-          <a
-            href="#"
-            className="cell-link"
-            style={textStyle}
-            onClick={(e: React.MouseEvent) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onOpenExternalUrl(value.trim());
-            }}
-          >
-            {value}
-          </a>
-        ) : (
-          <span className="cell-value" style={textStyle}>{value}</span>
-        ))}
-      </div>
+      <CellRenderer
+        rowIndex={rowIndex}
+        columnIndex={columnIndex}
+        style={style}
+        value={val}
+        format={fmt}
+        isSelected={isSel}
+        isInRange={inRange}
+        isRangeTop={isTop}
+        isRangeBottom={isBottom}
+        isRangeLeft={isLeft}
+        isRangeRight={isRight}
+        isSingleCellSelection={isSingle}
+        isEditing={isEdit}
+        editValue={editValue}
+        rowCount={rowCount}
+        colCount={colCount}
+        onCellClick={onCellClick}
+        onCellDoubleClick={onCellDoubleClick}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
+        onEditValueChange={setEditValue}
+        onEditCommit={commitEdit}
+        onEditCancel={onEditCancel}
+        onCellNavigate={onCellClick}
+        onInsertRow={onInsertRowRef.current}
+        onFocusAndSelect={focusAndSelectCell}
+        onOpenExternalUrl={onOpenExternalUrl}
+        editInputRef={editInputRef}
+        pendingInitialEditValue={pending_initial_edit_value}
+        prevEditingCell={prevEditingCell}
+      />
     );
   };
 
+  // Empty state: show message when grid has no data
+  const isEmpty =
+    data.every((row) => row.every((cell) => cell === '')) &&
+    data.length <= 20 &&
+    (data[0]?.length || 0) <= 10;
+
   return (
-    <div className="grid-container" ref={containerRef}>
+    <div className="grid-container" ref={containerRef} role="grid" aria-label="Spreadsheet">
+      {isEmpty && !editingCell && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            textAlign: 'center',
+            color: '#666a57',
+            fontSize: '14px',
+            zIndex: 5,
+            pointerEvents: 'none',
+          }}
+        >
+          This CSV file is empty.
+          <br />
+          Start typing or open a file to begin.
+        </div>
+      )}
       {/* Column headers */}
       <div className="column-headers">
         <div
           className="column-headers-inner"
-          style={{
-            width: `${Math.max(totalColumnWidth, gridSize.width)}px`,
-            transform: `translateX(-${scrollLeft}px)`,
-          }}
+          ref={colHeadersRef}
+          style={{ width: `${Math.max(totalColumnWidth, gridSize.width)}px` }}
         >
           {Array.from({ length: colCount }).map((_, i) => (
             <div
               key={i}
               className={`column-header ${isFullColSelection && selectionBounds && i >= selectionBounds.minCol && i <= selectionBounds.maxCol ? 'selected-header' : ''}`}
               style={{ width: getColumnWidth(i) }}
+              role="columnheader"
+              aria-label={`Column ${colIndexToLetter(i)}`}
               draggable
               onClick={() => {
                 if (suppressHeaderClick.current) return;
@@ -550,16 +621,6 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
                 e.preventDefault();
                 const fromValue = Number(e.dataTransfer.getData('text/plain'));
                 if (Number.isNaN(fromValue) || fromValue === i) return;
-
-                setColumnWidths((prev: number[]) => {
-                  const next = [...prev];
-                  const value = next.splice(fromValue, 1)[0];
-                  const insertAt = fromValue < i ? i - 1 : i;
-                  next.splice(insertAt, 0, value);
-                  onColumnWidthsChange(next);
-                  return next;
-                });
-
                 onColMove(fromValue, i);
               }}
               onDragEnd={() => {
@@ -585,15 +646,14 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
 
       {/* Row headers */}
       <div className="row-headers">
-        <div
-          className="row-headers-inner"
-          style={{ transform: `translateY(-${scrollTop}px)` }}
-        >
+        <div className="row-headers-inner" ref={rowHeadersRef}>
           {Array.from({ length: rowCount }).map((_, i) => (
             <div
               key={i}
               className={`row-header ${isFullRowSelection && selectionBounds && i >= selectionBounds.minRow && i <= selectionBounds.maxRow ? 'selected-header' : ''}`}
               style={{ height: CELL_HEIGHT }}
+              role="rowheader"
+              aria-label={`Row ${i + 1}`}
               draggable
               onClick={() => {
                 if (suppressHeaderClick.current) return;
