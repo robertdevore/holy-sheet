@@ -598,6 +598,22 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
                 suppressHeaderClick.current = true;
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/plain', String(i));
+
+                // Drag ghost: render column letter on a canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = 100;
+                canvas.height = 30;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                  ctx.fillStyle = '#1f2937';
+                  ctx.fillRect(0, 0, 100, 30);
+                  ctx.fillStyle = '#ffffff';
+                  ctx.font = '12px sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'middle';
+                  ctx.fillText(`Column ${colIndexToLetter(i)}`, 50, 15);
+                }
+                e.dataTransfer.setDragImage(canvas, 50, 15);
               }}
               onDragOver={(e: React.DragEvent) => {
                 e.preventDefault();
