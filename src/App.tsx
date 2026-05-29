@@ -357,6 +357,7 @@ function App() {
       if (!state.selectedCell || state.editingCell || !text) return;
 
       const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      if (!normalized.trim()) return;
       const lines = normalized.split('\n');
 
       // Trim trailing empty lines

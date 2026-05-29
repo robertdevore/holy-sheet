@@ -77,6 +77,15 @@ export interface AppState {
   lastSavedAt: number | null;
   saveError: string | null;
   isLoading: boolean;
+  /** AI settings — opt-in, privacy-first. No data leaves the machine without explicit consent. */
+  aiSettings: {
+    provider: string;
+    apiKey: string;
+    model: string;
+    temperature: number;
+    allowDataSharing: boolean;
+    maxRowsForAI: number;
+  };
 }
 
 const undoStack = new UndoStack();
@@ -101,6 +110,14 @@ export function useAppState() {
     lastSavedAt: null,
     saveError: null,
     isLoading: false,
+    aiSettings: {
+      provider: '',
+      apiKey: '',
+      model: '',
+      temperature: 0.3,
+      allowDataSharing: false,
+      maxRowsForAI: 500,
+    },
   });
 
   const updateData = useCallback((newData: string[][]) => {
@@ -374,6 +391,22 @@ export function useAppState() {
     setState((prev: AppState) => ({ ...prev, isLoading: loading }));
   }, []);
 
+  /** Update AI settings. Privacy gate: allowDataSharing must be explicitly enabled by the user. */
+  const setAiSettings = useCallback(
+    (patch: Partial<AppState['aiSettings']>) => {
+      setState((prev: AppState) => ({
+        ...prev,
+        aiSettings: { ...prev.aiSettings, ...patch },
+      }));
+    },
+    [],
+  );
+
+  /** Check that the user has opted into AI data sharing before any AI operation. */
+  const checkPrivacyConsent = useCallback((): boolean => {
+    return state.aiSettings.allowDataSharing && state.aiSettings.apiKey.length > 0;
+  }, [state.aiSettings]);
+
   const addTab = useCallback(() => {
     undoStack.clear();
 
@@ -613,5 +646,8 @@ export function useAppState() {
     toggleFormat,
     setFormatColor,
     setColumnWidths,
+    /** AI settings management and privacy consent gate. */
+    setAiSettings,
+    checkPrivacyConsent,
   };
 }
