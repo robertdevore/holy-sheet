@@ -2,12 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   createEmptyGrid,
   expandGrid,
-  parseCsv,
   serializeCsv,
   detectDelimiter,
   parseWorkbook,
   serializeWorkbook,
 } from '../csv';
+// Direct import avoids vitest barrel-import caching quirk with re-exports
+import { parseCsv } from '../csv/parse';
 
 describe('createEmptyGrid', () => {
   it('creates default 20x10 grid', () => {

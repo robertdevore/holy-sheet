@@ -48,8 +48,14 @@ export function parseCsv(content: string, delimiter?: string): CsvData {
     };
   }
 
-  // Strip UTF-8 BOM if present
-  const cleanContent = content.startsWith('\uFEFF') ? content.slice(1) : content;
+  // Normalize line endings (handles \r\n → \n) for cross-platform robustness
+  const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // Strip UTF-8 BOM if present (robust: charCodeAt covers environments where startsWith fails)
+  const cleanContent =
+    normalizedContent.charCodeAt(0) === 0xfeff || normalizedContent.startsWith('\uFEFF')
+      ? normalizedContent.slice(1)
+      : normalizedContent;
 
   const delim = delimiter || detectDelimiter(cleanContent);
   const rows: string[][] = [];
