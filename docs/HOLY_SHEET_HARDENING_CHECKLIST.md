@@ -375,7 +375,7 @@ The current logic `if (char === '\r') continue;` runs outside `inQuotes` check. 
 
 ### HS-013: Add CSV parse → serialize round-trip tests
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CSV Integrity
 **Size:** M
 **Risk:** Low
@@ -408,7 +408,7 @@ Test both `parseCsv` + `serializeCsv` as well as `parseWorkbook` + `serializeWor
 
 ### HS-014: Add workbook format round-trip tests
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CSV Integrity
 **Size:** M
 **Risk:** Low
@@ -435,7 +435,7 @@ Test both `parseCsv` + `serializeCsv` as well as `parseWorkbook` + `serializeWor
 
 ### HS-015: Add delimiter detection edge case tests and hardening
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CSV Integrity
 **Size:** S
 **Risk:** Low
@@ -462,7 +462,7 @@ Test both `parseCsv` + `serializeCsv` as well as `parseWorkbook` + `serializeWor
 
 ### HS-016: Add explicit delimiter selection option for Open dialog
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CSV Integrity
 **Size:** S
 **Risk:** Low
@@ -488,7 +488,7 @@ Test both `parseCsv` + `serializeCsv` as well as `parseWorkbook` + `serializeWor
 
 ### HS-017: Add "Export as plain CSV" option (strip workbook metadata)
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CSV Integrity
 **Size:** S
 **Risk:** Low
@@ -519,7 +519,7 @@ Test both `parseCsv` + `serializeCsv` as well as `parseWorkbook` + `serializeWor
 
 ### HS-018: Fix Enter key behavior: commit edit and move selection, don't auto-edit next cell
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** S
 **Risk:** Low
@@ -548,7 +548,7 @@ Test both `parseCsv` + `serializeCsv` as well as `parseWorkbook` + `serializeWor
 
 ### HS-019: Fix paste heuristics: don't split on comma when data has tabs
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** S
 **Risk:** Medium
@@ -581,7 +581,7 @@ Heuristic: if ALL rows have the same number of commas AND that number > 0, split
 
 ### HS-020: Unify copy implementation (remove duplicate code paths)
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** S
 **Risk:** Low
@@ -607,7 +607,7 @@ Heuristic: if ALL rows have the same number of commas AND that number > 0, split
 
 ### HS-021: Add Shift+Click to extend selection
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** S
 **Risk:** Low
@@ -637,7 +637,7 @@ Heuristic: if ALL rows have the same number of commas AND that number > 0, split
 
 ### HS-022: Add Shift+Arrow to extend selection from keyboard
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** S
 **Risk:** Low
@@ -664,7 +664,7 @@ Heuristic: if ALL rows have the same number of commas AND that number > 0, split
 
 ### HS-023: Add Ctrl+Space (select column) and Shift+Space (select row) shortcuts
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** XS
 **Risk:** Low
@@ -691,7 +691,7 @@ Heuristic: if ALL rows have the same number of commas AND that number > 0, split
 
 ### HS-024: Add Page Up / Page Down navigation
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** XS
 **Risk:** Low
