@@ -1007,7 +1007,7 @@ Use a ref on the header container and directly set `style.transform` in the `onS
 
 ### HS-035: Add column header virtualization for wide files
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Performance
 **Size:** M
 **Risk:** Medium
@@ -1038,7 +1038,7 @@ Compute visible column range from `scrollLeft` and `gridSize.width`. Only render
 
 ### HS-036: Add row header virtualization for tall files
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Performance
 **Size:** S
 **Risk:** Low
@@ -1312,7 +1312,7 @@ The CLI should NOT require Electron to start. CSV parsing utilities should work 
 
 ### HS-046: Add AI settings/config infrastructure
 
-**Status:** Todo
+**Status:** Done
 **Phase:** AI Readiness
 **Size:** M
 **Risk:** Low
@@ -1346,7 +1346,7 @@ API key handling is the most sensitive part. Consider using Electron's `safeStor
 
 ### HS-047: Create AI provider abstraction
 
-**Status:** Todo
+**Status:** Done
 **Phase:** AI Readiness
 **Size:** M
 **Risk:** Low
@@ -1376,7 +1376,7 @@ API key handling is the most sensitive part. Consider using Electron's `safeStor
 
 ### HS-048: Add AI prompt templates for CSV operations
 
-**Status:** Todo
+**Status:** Done
 **Phase:** AI Readiness
 **Size:** S
 **Risk:** Low
@@ -1404,7 +1404,7 @@ API key handling is the most sensitive part. Consider using Electron's `safeStor
 
 ### HS-049: Add AI action proposal → preview → apply flow scaffolding
 
-**Status:** Todo
+**Status:** Done
 **Phase:** AI Readiness
 **Size:** M
 **Risk:** Medium
@@ -1436,7 +1436,7 @@ API key handling is the most sensitive part. Consider using Electron's `safeStor
 
 ### HS-050: Add privacy warning before sending data to AI
 
-**Status:** Todo
+**Status:** Done
 **Phase:** AI Readiness
 **Size:** S
 **Risk:** Medium
@@ -1468,7 +1468,7 @@ API key handling is the most sensitive part. Consider using Electron's `safeStor
 
 ### HS-051: Add `strata note import` CLI command (stub)
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Strata Readiness
 **Size:** M
 **Risk:** Medium
@@ -1499,7 +1499,7 @@ This is a stub. Full integration design comes later. Just prove the data path wo
 
 ### HS-052: Add `strata note export` CLI command (stub)
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Strata Readiness
 **Size:** M
 **Risk:** Medium
@@ -1526,7 +1526,7 @@ This is a stub. Full integration design comes later. Just prove the data path wo
 
 ### HS-053: Add `_strata_note_id` column convention to store model
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Strata Readiness
 **Size:** S
 **Risk:** Low
@@ -1556,7 +1556,7 @@ This is a stub. Full integration design comes later. Just prove the data path wo
 
 ### HS-054: Design and document Strata ↔ Holy Sheet data contract
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Strata Readiness
 **Size:** S
 **Risk:** Low
@@ -1586,7 +1586,7 @@ This is a stub. Full integration design comes later. Just prove the data path wo
 
 ### HS-055: Add keyboard shortcut reference to README
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Docs
 **Size:** S
 **Risk:** Low
@@ -1612,7 +1612,7 @@ This is a stub. Full integration design comes later. Just prove the data path wo
 
 ### HS-056: Add CONTRIBUTING.md
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Docs
 **Size:** S
 **Risk:** Low
@@ -1635,7 +1635,7 @@ This is a stub. Full integration design comes later. Just prove the data path wo
 
 ### HS-057: Add ARCHITECTURE.md
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Docs
 **Size:** S
 **Risk:** Low
@@ -1658,7 +1658,7 @@ This is a stub. Full integration design comes later. Just prove the data path wo
 
 ### HS-058: Add unit tests for CSV parse/export utilities
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Tests
 **Size:** M
 **Risk:** Low
@@ -1685,7 +1685,7 @@ This is a stub. Full integration design comes later. Just prove the data path wo
 
 ### HS-059: Add unit tests for selection utilities
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Tests
 **Size:** S
 **Risk:** Low
@@ -1710,7 +1710,7 @@ This is a stub. Full integration design comes later. Just prove the data path wo
 
 ### HS-060: Add unit tests for undo/redo stack
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Tests
 **Size:** M
 **Risk:** Low
@@ -1739,7 +1739,7 @@ This is a stub. Full integration design comes later. Just prove the data path wo
 
 ### HS-061: Add unit tests for paste text parsing heuristics
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Tests
 **Size:** S
 **Risk:** Low
