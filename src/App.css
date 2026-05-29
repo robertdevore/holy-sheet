@@ -351,11 +351,16 @@ body {
   z-index: 10;
   height: 40px;
   overflow: hidden;
+  /* Perf: promote to GPU layer and contain layout for wide files (HS-035) */
+  will-change: transform;
+  contain: layout style;
 }
 
 .column-headers-inner {
   display: flex;
   height: 40px;
+  /* Perf: contain paint for wide column sets */
+  contain: layout style;
 }
 
 .column-header {
@@ -406,10 +411,13 @@ body {
   border-right: 1px solid var(--border-subtle);
   z-index: 10;
   overflow: hidden;
+  /* Perf: contain layout for tall files (HS-036) */
+  contain: layout style;
 }
 
 .row-headers-inner {
   will-change: transform;
+  contain: layout style;
 }
 
 .row-header {
