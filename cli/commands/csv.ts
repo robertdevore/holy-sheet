@@ -236,4 +236,121 @@ export const registerCsvCommands = (
         process.stdout.write(output + '\n');
       }
     });
+
+  // ---- csv normalize ----
+
+  csv
+    .command('normalize <file>')
+    .description('Normalize CSV: trim whitespace, fill empty cells, reformat consistently')
+    .option('--trim', 'Trim whitespace from all cells')
+    .option('--fill-empty <value>', 'Fill empty cells with a value')
+    .option('--dedupe', 'Remove duplicate rows')
+    .option('--out <path>', 'Output file path (prints to stdout if omitted)')
+    .action(function (
+      filePath: string,
+      cmdOptions: { trim?: boolean; fillEmpty?: string; dedupe?: boolean; out?: string },
+    ) {
+      const { options } = getContext(this);
+
+      if (!fs.existsSync(filePath)) {
+        throw new CliError({
+          message: 'File not found',
+          exitCode: ExitCode.NotFound,
+          code: 'FILE_NOT_FOUND',
+          details: { path: filePath },
+        });
+      }
+
+      const content = fs.readFileSync(filePath, 'utf-8');
+      let rows = parseCsv(content);
+
+      if (0 === rows.length) {
+        throw new CliError({
+          message: 'CSV file is empty',
+          exitCode: ExitCode.ValidationError,
+          code: 'EMPTY_CSV',
+        });
+      }
+
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+      let changes = 0;
+
+      // Trim whitespace
+      if (cmdOptions.trim) {
+        for (const row of rows) {
+          for (let c = 0; c < row.length; c++) {
+            const trimmed = (row[c] || '').trim();
+            if (trimmed !== row[c]) {
+              row[c] = trimmed;
+              changes++;
+            }
+          }
+        }
+      }
+
+      // Fill empty cells
+      if (cmdOptions.fillEmpty !== undefined) {
+        const fillValue = cmdOptions.fillEmpty;
+        for (const row of rows) {
+          for (let c = 0; c < row.length; c++) {
+            if ('' === (row[c] || '').trim()) {
+              row[c] = fillValue;
+              changes++;
+            }
+          }
+        }
+      }
+
+      // Deduplicate rows
+      if (cmdOptions.dedupe) {
+        const seen = new Set<string>();
+        const uniqueRows: string[][] = [headers];
+        for (const row of dataRows) {
+          const key = row.join('\t');
+          if (!seen.has(key)) {
+            seen.add(key);
+            uniqueRows.push(row);
+          } else {
+            changes++;
+          }
+        }
+        if (uniqueRows.length < rows.length) {
+          rows = uniqueRows;
+        }
+      }
+
+      const output = serializeCsv(rows);
+
+      if (options.dryRun) {
+        printSuccess(options, {
+          dryRun: true,
+          message: `Would normalize ${path.basename(filePath)}`,
+          changes,
+          rowCount: rows.length,
+          colCount: rows[0]?.length || 0,
+          preview: rows.slice(0, 4),
+        } as unknown as Record<string, unknown>, { dryRun: true });
+        return;
+      }
+
+      if (cmdOptions.out) {
+        fs.writeFileSync(cmdOptions.out, output, 'utf-8');
+        printSuccess(options, {
+          success: true,
+          path: cmdOptions.out,
+          changes,
+          rowCount: rows.length,
+        } as unknown as Record<string, unknown>);
+      } else if ('json' === options.outputMode) {
+        printSuccess(options, {
+          csv: output,
+          changes,
+          rowCount: rows.length,
+          colCount: rows[0]?.length || 0,
+        } as unknown as Record<string, unknown>);
+      } else {
+        process.stdout.write(output + '\n');
+      }
+    });
 };
