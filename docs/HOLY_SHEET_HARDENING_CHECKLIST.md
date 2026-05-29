@@ -717,7 +717,7 @@ Heuristic: if ALL rows have the same number of commas AND that number > 0, split
 
 ### HS-025: Add visual drag preview for row/column reorder
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** M
 **Risk:** Medium
@@ -750,7 +750,7 @@ HTML5 drag-and-drop API has limited visual customization. Consider using a custo
 
 ### HS-026: Fix column reorder width-preservation coupling
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** S
 **Risk:** Medium
@@ -780,7 +780,7 @@ HTML5 drag-and-drop API has limited visual customization. Consider using a custo
 
 ### HS-027: Add save timestamp and "last saved" indicator to StatusBar
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** XS
 **Risk:** Low
@@ -808,7 +808,7 @@ HTML5 drag-and-drop API has limited visual customization. Consider using a custo
 
 ### HS-028: Add save error inline feedback (replace alert())
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** S
 **Risk:** Low
@@ -835,7 +835,7 @@ HTML5 drag-and-drop API has limited visual customization. Consider using a custo
 
 ### HS-029: Add loading spinner during file open/save operations
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** S
 **Risk:** Low
@@ -864,7 +864,7 @@ HTML5 drag-and-drop API has limited visual customization. Consider using a custo
 
 ### HS-030: Add empty state message for new/empty files
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** XS
 **Risk:** Low
@@ -891,7 +891,7 @@ HTML5 drag-and-drop API has limited visual customization. Consider using a custo
 
 ### HS-031: Add ARIA grid roles and basic screen reader support
 
-**Status:** Todo
+**Status:** Done
 **Phase:** UI Polish
 **Size:** M
 **Risk:** Low
@@ -923,7 +923,7 @@ HTML5 drag-and-drop API has limited visual customization. Consider using a custo
 
 ### HS-032: Add React.memo to Cell renderer component
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Performance
 **Size:** S
 **Risk:** Low
@@ -953,7 +953,7 @@ The Cell currently is a closure inside Grid that captures many variables. Extrac
 
 ### HS-033: Add useMemo for derived selection values
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Performance
 **Size:** XS
 **Risk:** Low
@@ -979,7 +979,7 @@ The Cell currently is a closure inside Grid that captures many variables. Extrac
 
 ### HS-034: Debounce scroll-to-header sync
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Performance
 **Size:** XS
 **Risk:** Low
@@ -1065,7 +1065,7 @@ Compute visible column range from `scrollLeft` and `gridSize.width`. Only render
 
 ### HS-037: Optimize paste undo data capture for large pastes
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Performance
 **Size:** S
 **Risk:** Low
@@ -1090,7 +1090,7 @@ Compute visible column range from `scrollLeft` and `gridSize.width`. Only render
 
 ### HS-038: Add useCallback stability for hotkey handler dependencies
 
-**Status:** Todo
+**Status:** Done
 **Phase:** Performance
 **Size:** S
 **Risk:** Medium
@@ -1120,7 +1120,7 @@ Store `state.data`, `state.selectedCell`, `state.selectedRange`, `state.editingC
 
 ### HS-039: Create CLI entrypoint script
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CLI
 **Size:** M
 **Risk:** Medium
@@ -1152,7 +1152,7 @@ The CLI should NOT require Electron to start. CSV parsing utilities should work 
 
 ### HS-040: Add `health` CLI command
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CLI
 **Size:** XS
 **Risk:** Low
@@ -1176,7 +1176,7 @@ The CLI should NOT require Electron to start. CSV parsing utilities should work 
 
 ### HS-041: Add `csv inspect` CLI command
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CLI
 **Size:** M
 **Risk:** Low
@@ -1203,7 +1203,7 @@ The CLI should NOT require Electron to start. CSV parsing utilities should work 
 
 ### HS-042: Add `csv validate` CLI command
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CLI
 **Size:** M
 **Risk:** Low
@@ -1231,7 +1231,7 @@ The CLI should NOT require Electron to start. CSV parsing utilities should work 
 
 ### HS-043: Add `csv preview` CLI command
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CLI
 **Size:** S
 **Risk:** Low
@@ -1257,7 +1257,7 @@ The CLI should NOT require Electron to start. CSV parsing utilities should work 
 
 ### HS-044: Add `csv normalize` CLI command (dry-run first)
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CLI
 **Size:** M
 **Risk:** Medium
@@ -1284,7 +1284,7 @@ The CLI should NOT require Electron to start. CSV parsing utilities should work 
 
 ### HS-045: Standardize CLI error shape
 
-**Status:** Todo
+**Status:** Done
 **Phase:** CLI
 **Size:** S
 **Risk:** Low
