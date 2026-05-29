@@ -32,8 +32,6 @@ interface CellRendererProps {
   onEditCommit: (row: number, col: number, value: string) => void;
   onEditCancel: () => void;
   onCellNavigate: (row: number, col: number) => void;
-  onInsertRow: (rowIndex: number) => void;
-  onFocusAndSelect: (row: number, col: number) => void;
   onOpenExternalUrl: (url: string) => void;
   editInputRef: React.RefObject<HTMLInputElement | null>;
   pendingInitialEditValue: React.MutableRefObject<string | null>;
@@ -71,8 +69,6 @@ export const CellRenderer = memo(function CellRenderer(props: CellRendererProps)
     onEditCommit,
     onEditCancel,
     onCellNavigate,
-    onInsertRow,
-    onFocusAndSelect,
     onOpenExternalUrl,
     editInputRef,
   } = props;
@@ -126,8 +122,6 @@ export const CellRenderer = memo(function CellRenderer(props: CellRendererProps)
           onEditCommit={onEditCommit}
           onEditCancel={onEditCancel}
           onCellNavigate={onCellNavigate}
-          onInsertRow={onInsertRow}
-          onFocusAndSelect={onFocusAndSelect}
           editInputRef={editInputRef}
         />
       ) : /^(https?:\/\/|www\.)\S+$/i.test(value.trim()) ? (
@@ -164,8 +158,6 @@ const CellEditInput = memo(function CellEditInput({
   onEditCommit,
   onEditCancel,
   onCellNavigate,
-  onInsertRow,
-  onFocusAndSelect,
   editInputRef,
 }: {
   rowIndex: number;
@@ -178,8 +170,6 @@ const CellEditInput = memo(function CellEditInput({
   onEditCommit: (row: number, col: number, value: string) => void;
   onEditCancel: () => void;
   onCellNavigate: (row: number, col: number) => void;
-  onInsertRow: (rowIndex: number) => void;
-  onFocusAndSelect: (row: number, col: number) => void;
   editInputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   // Focus management
@@ -224,16 +214,11 @@ const CellEditInput = memo(function CellEditInput({
           e.preventDefault();
           onEditCommit(rowIndex, columnIndex, editValue);
 
-          if (!e.shiftKey && rowIndex === rowCount - 1) {
-            window.setTimeout(() => {
-              onInsertRow(rowCount);
-              onFocusAndSelect(rowIndex + 1, columnIndex);
-            }, 0);
-            return;
-          }
-
+          // Commit edit and move selection down (navigation mode, not editing)
           const nextRow = e.shiftKey ? Math.max(0, rowIndex - 1) : rowIndex + 1;
-          onFocusAndSelect(nextRow, columnIndex);
+          if (nextRow < rowCount) {
+            onCellNavigate(nextRow, columnIndex);
+          }
         } else if (e.key === 'Escape') {
           e.preventDefault();
           onEditCancel();

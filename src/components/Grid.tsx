@@ -119,18 +119,6 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
     [onCellEdit, onEditComplete],
   );
 
-  const focusAndSelectCell = useCallback((row: number, col: number) => {
-    if (gridRef.current && gridRef.current.scrollToItem) {
-      gridRef.current.scrollToItem({ rowIndex: row, columnIndex: col, align: 'smart' });
-    }
-
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        onCellClickRef.current(row, col);
-      });
-    });
-  }, []);
-
   // Sync local column widths from persisted props (intentional prop→state sync)
   useEffect(() => {
     const next = (persistedColumnWidths || []).slice(0, colCount).map((width) => {
@@ -530,8 +518,6 @@ export const Grid: React.FC<GridProps> = (props: GridProps) => {
         onEditCommit={commitEdit}
         onEditCancel={onEditCancel}
         onCellNavigate={onCellClick}
-        onInsertRow={onInsertRowRef.current}
-        onFocusAndSelect={focusAndSelectCell}
         onOpenExternalUrl={onOpenExternalUrl}
         editInputRef={editInputRef}
         pendingInitialEditValue={pending_initial_edit_value}
