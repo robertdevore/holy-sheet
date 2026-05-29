@@ -368,16 +368,13 @@ function App() {
 
       let rows: string[][];
 
-      // Single line with no tabs: treat as one cell
+      // Single line with no tabs: prefer treating as a single cell value.
+      // Only split by comma if the line has consistent multi-column structure
+      // AND contains tabs (which were already handled above).
       if (lines.length === 1 && !lines[0].includes('\t')) {
-        // If the single line has consistent comma separation (same as multi-column CSV),
-        // split by comma; otherwise keep as single cell
-        const commaFields = lines[0].split(',');
-        if (commaFields.length > 1) {
-          rows = [commaFields];
-        } else {
-          rows = [[lines[0]]];
-        }
+        // Single-line paste: preserve as one cell even if it contains commas.
+        // Users pasting "San Francisco, CA" expect one cell, not two.
+        rows = [[lines[0]]];
       } else {
         // Multi-line or tab-containing: determine delimiter per row
         const hasTabs = lines.some((line) => line.includes('\t'));
@@ -529,14 +526,22 @@ function App() {
     [state.selectedRange, setFormatColor],
   );
 
+  // Module-level copy format flag — set by hotkeys before execCommand('copy'),
+  // read by the copy event listener to determine TSV vs CSV output.
+  // This unifies all copy paths through a single DOM event listener.
+  const pendingCopyFormat = useRef<'tsv' | 'csv'>('tsv');
+
   // Handle copy/paste
   useEffect(() => {
-    const handleCopy = async (e: ClipboardEvent) => {
-      const text = getSelectedRangeText();
+    const handleCopy = (e: ClipboardEvent) => {
+      const format = pendingCopyFormat.current;
+      const text = getSelectedRangeText(format);
       if (null === text) return;
 
       e.preventDefault();
       e.clipboardData?.setData('text/plain', text);
+      // Reset to default for next copy
+      pendingCopyFormat.current = 'tsv';
     };
 
     const handlePaste = async (e: ClipboardEvent) => {
@@ -580,6 +585,7 @@ function App() {
   useHotkeys({
     dataRef,
     selectedCellRef,
+    pendingCopyFormatRef: pendingCopyFormat,
     setEditingCell,
     setSelectedCell,
     setSelectedRange,

@@ -7,6 +7,8 @@ interface UseHotkeysParams {
   dataRef: React.MutableRefObject<string[][]>;
   /** Ref to current selected cell */
   selectedCellRef: React.MutableRefObject<CellCoord | null>;
+  /** Ref to pending copy format ('tsv' or 'csv') — set before execCommand('copy') */
+  pendingCopyFormatRef: React.MutableRefObject<'tsv' | 'csv'>;
   /** Callback: start editing a cell */
   setEditingCell: (cell: CellCoord | null) => void;
   /** Callback: set selected cell */
@@ -48,6 +50,7 @@ interface UseHotkeysParams {
 export function useHotkeys({
   dataRef,
   selectedCellRef,
+  pendingCopyFormatRef,
   setEditingCell,
   setSelectedCell,
   setSelectedRange,
@@ -228,29 +231,19 @@ export function useHotkeys({
         return;
       }
 
-      // Ctrl+C: Copy as TSV — handled by the 'copy' DOM event listener in App.tsx.
-      // We just prevent default to avoid browser native copy of nothing.
+      // Ctrl+C: Copy as TSV — sets format flag then triggers DOM copy event.
       if ('c' === key && !e.shiftKey && !e.altKey) {
-        const text = cbs.getSelectedRangeText();
-        if (null === text) return;
         e.preventDefault();
+        pendingCopyFormatRef.current = 'tsv';
         document.execCommand('copy');
         return;
       }
 
-      // Ctrl+Shift+C: Copy as CSV
+      // Ctrl+Shift+C: Copy as CSV — sets format flag then triggers DOM copy event.
       if ('c' === key && e.shiftKey && !e.altKey) {
-        const text = cbs.getSelectedRangeText('csv');
-        if (null === text) return;
-
         e.preventDefault();
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).catch(() => {
-            document.execCommand('copy');
-          });
-        } else {
-          document.execCommand('copy');
-        }
+        pendingCopyFormatRef.current = 'csv';
+        document.execCommand('copy');
         return;
       }
 
